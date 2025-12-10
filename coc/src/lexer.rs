@@ -97,7 +97,7 @@ pub enum Token {
     #[regex(r"[0-9]+", |lex| lex.slice().parse::<i64>().ok())]
     Number(Option<i64>),
 
-    #[regex(r#""([^"\\]|\\.)*""#, |lex| {
+    #[regex(r#""([^"\\]|\\.)*?""#, |lex| {
         let s = lex.slice();
         s[1..s.len()-1].to_owned()
     })]
@@ -111,8 +111,8 @@ pub enum Token {
 
     // Whitespace and comments
     #[regex(r"[ \t\n\f]+", logos::skip)]
-    #[regex(r"--[^\n\r]*", logos::skip)]
-    #[regex(r"/\*([^*]|\*+[^*/])*\*+/", logos::skip)]
+    #[regex(r"--[^\n\r]*", logos::skip, allow_greedy = true)]
+    #[regex(r"/\*([^*]|\*+[^*/])*?\*+/", logos::skip)]
     Whitespace,
 }
 

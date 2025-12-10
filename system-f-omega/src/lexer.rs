@@ -92,7 +92,7 @@ pub enum Token {
 
     // Skip whitespace and comments
     #[regex(r"[ \t\f]+", logos::skip)]
-    #[regex(r"--[^\r\n]*", logos::skip)]
+    #[regex(r"--[^\r\n]*", logos::skip, allow_greedy = true)]
     #[token("\r\n", |_| Token::Newline)]
     #[token("\n", |_| Token::Newline)]
     Error,
