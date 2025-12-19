@@ -25,8 +25,6 @@ pub enum TyVarKind {
     Universal,
     /// Existential type variable: ^α
     Existential,
-    /// Solved existential: ^α = τ
-    Solved(CoreType),
     /// Marker: ►α (for scoping)
     Marker,
 }
@@ -84,6 +82,8 @@ fn can_types_unify(ty1: &CoreType, ty2: &CoreType) -> bool {
 pub struct Worklist {
     entries: Vec<WorklistEntry>,
     next_var: usize,
+    /// Solutions for existential type variables.
+    solved_evars: HashMap<String, CoreType>,
 }
 
 impl Default for Worklist {
@@ -97,6 +97,7 @@ impl Worklist {
         Worklist {
             entries: Vec::new(),
             next_var: 0,
+            solved_evars: HashMap::new(),
         }
     }
 
@@ -132,37 +133,19 @@ impl Worklist {
     }
 
     pub fn solve_evar(&mut self, name: &str, ty: CoreType) -> TypeResult<()> {
-        for entry in self.entries.iter_mut() {
-            if let WorklistEntry::TVar(var_name, kind) = entry {
-                if var_name == name {
-                    match kind {
-                        TyVarKind::Existential => {
-                            *kind = TyVarKind::Solved(ty);
-                            return Ok(());
-                        }
-                        TyVarKind::Solved(solved_ty) => {
-                            // Checks that the solved type does not conflict with ty
-                            if can_types_unify(&ty, solved_ty) {
-                                return Ok(());
-                            } else {
-                                return Err(TypeError::TypeUnificationError {
-                                    left: ty,
-                                    right: solved_ty.clone(),
-                                });
-                            }
-                        }
-                        _ => {
-                            // Skip universal variables, markers, etc.
-                            continue;
-                        }
-                    }
-                }
+        if let Some(existing) = self.solved_evars.get(name) {
+            if can_types_unify(&ty, existing) {
+                Ok(())
+            } else {
+                Err(TypeError::TypeUnificationError {
+                    left: ty,
+                    right: existing.clone(),
+                })
             }
+        } else {
+            self.solved_evars.insert(name.to_string(), ty);
+            Ok(())
         }
-        Err(TypeError::UnboundVariable {
-            name: name.to_string(),
-            span: None,
-        })
     }
 
     pub fn before(&self, a: &str, b: &str) -> bool {
@@ -184,6 +167,10 @@ impl Worklist {
             (Some(pa), Some(pb)) => pa < pb,
             _ => false,
         }
+    }
+
+    pub fn find_evar_solution(&self, name: &str) -> Option<&CoreType> {
+        self.solved_evars.get(name)
     }
 }
 
@@ -250,6 +237,8 @@ impl DKInference {
     }
 
     fn solve_subtype(&mut self, left: CoreType, right: CoreType) -> TypeResult<()> {
+        let left = self.zonk(&left);
+        let right = self.zonk(&right);
         self.trace.push(format!("Sub {} <: {}", left, right));
 
         if left == right {
@@ -661,6 +650,8 @@ impl DKInference {
         arg: CoreTerm,
         result_ty: CoreType,
     ) -> TypeResult<()> {
+        let func_ty = self.zonk(&func_ty);
+        let result_ty = self.zonk(&result_ty);
         match func_ty {
             CoreType::Arrow(param_ty, ret_ty) => {
                 self.worklist.push(WorklistEntry::Judgment(Judgment::Sub {
@@ -939,6 +930,31 @@ impl DKInference {
 
     pub fn get_trace(&self) -> &[String] {
         &self.trace
+    }
+
+    /// Substitute solved existential variables with their solutions.
+    /// The name "zonk" comes from GHC. Why "zonk"? Ask Simon Peyton Jones.
+    fn zonk(&self, ty: &CoreType) -> CoreType {
+        match ty {
+            CoreType::ETVar(name) => {
+                if let Some(solution) = self.worklist.find_evar_solution(name) {
+                    self.zonk(solution)
+                } else {
+                    ty.clone()
+                }
+            }
+            CoreType::Arrow(t1, t2) => {
+                CoreType::Arrow(Box::new(self.zonk(t1)), Box::new(self.zonk(t2)))
+            }
+            CoreType::App(t1, t2) => {
+                CoreType::App(Box::new(self.zonk(t1)), Box::new(self.zonk(t2)))
+            }
+            CoreType::Forall(var, body) => CoreType::Forall(var.clone(), Box::new(self.zonk(body))),
+            CoreType::Product(types) => {
+                CoreType::Product(types.iter().map(|t| self.zonk(t)).collect())
+            }
+            CoreType::Con(_) | CoreType::Var(_) => ty.clone(),
+        }
     }
 
     fn infer_binop_types(&mut self, op: &CoreBinOp) -> (CoreType, CoreType, CoreType) {

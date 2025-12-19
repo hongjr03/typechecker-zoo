@@ -435,12 +435,29 @@ mod tests {
 
     #[test]
     fn test_type_error() {
+        use system_f_omega::typecheck_module_silent;
+
         let source = r#"
             wrong :: Unit;
             wrong = 42;
         "#;
 
-        assert!(typecheck_module(source, "test.hs").is_err());
+        assert!(typecheck_module_silent(source, "test.hs").is_err());
+    }
+
+    #[test]
+    fn test_if_branch_type_mismatch() {
+        use system_f_omega::typecheck_module_silent;
+
+        // This tests that existential variables are properly "zonked" (resolved)
+        // when checking subtyping. The else branch returns Bool (from <) but the
+        // function is declared to return Int. This should fail to typecheck.
+        let source = r#"
+            bad :: Int -> Int;
+            bad n = if n <= 1 then n else (bad (n - 1)) < (bad (n - 2));
+        "#;
+
+        assert!(typecheck_module_silent(source, "test.hs").is_err());
     }
 
     #[test]

@@ -112,9 +112,9 @@ This tripartite structure allows the algorithm to defer complex decisions while 
 #![enum!("system-f-omega/src/worklist.rs", TyVarKind)]
 ```
 
-Type variables in the worklist can have different statuses that reflect their role in the type checking process. Universal type variables represent ordinary type variables that arise from explicit quantifiers in the source code, such as the \\( \\alpha \\) in \\( \\forall\\alpha. \\ldots \\). These variables have fixed scope and represent abstract types that can be instantiated with concrete types during polymorphic function application. Existential type variables, denoted as \\( \\hat{\\alpha} \\), represent unknown types that need to be inferred through constraint solving. The algorithm generates these variables when it encounters expressions whose types are not immediately apparent and must be determined through unification and constraint propagation.
+Type variables in the worklist can have different statuses that reflect their role in the type checking process. Universal type variables represent ordinary type variables that arise from explicit quantifiers in the source code, such as the \\( \\alpha \\) in \\( \\forall\\alpha. \\ldots \\). These variables have fixed scope and represent abstract types that can be instantiated with concrete types during polymorphic function application. Existential type variables, denoted as \\( \\hat{\\alpha} \\), represent unknown types that need to be inferred through constraint solving. The algorithm generates these variables when it encounters expressions whose types are not immediately apparent and must be determined through unification and constraint propagation. Marker variables, denoted as \\( \\triangleright\\alpha \\), serve as scope markers that enable garbage collection of type variables when their scope is exited.
 
-Solved existential variables represent the successful resolution of inference problems, taking the form \\( \\hat{\\alpha} = \\tau \\) where the unknown type \\( \\hat{\\alpha} \\) has been determined to be the concrete type \\( \\tau \\). Marker variables, denoted as \\( \\triangleright\\alpha \\), serve as scope markers that enable garbage collection of type variables when their scope is exited. This stratification enables precise control over variable scoping and solution propagation, ensuring that type variables are managed correctly throughout the inference process.
+Solutions for existential variables are stored in a separate map rather than in the worklist entries themselves. When an existential variable is solved, the mapping \\( \\hat{\\alpha} = \\tau \\) is recorded, indicating that the unknown type \\( \\hat{\\alpha} \\) has been determined to be the concrete type \\( \\tau \\). This separation ensures that solutions remain accessible even after worklist entries are processed and removed during constraint solving.
 
 ### Judgment Types
 
@@ -187,6 +187,8 @@ System Fω's subtyping relation captures the idea that more polymorphic types ar
 ```rust
 #![function!("system-f-omega/src/worklist.rs", DKInference::solve_subtype)]
 ```
+
+Before comparing types for subtyping, the algorithm performs a critical step called **zonking**: substituting all solved existential variables with their solutions. This ensures that subtyping comparisons see the fully resolved types rather than stale variable names. Without zonking, a chain of constraints like \\( \\text{Bool} \\leq \\hat{\\alpha}_1 \\), \\( \\hat{\\alpha}_1 \\leq \\hat{\\alpha}_0 \\), \\( \\hat{\\alpha}_0 \\leq \\text{Int} \\) would never detect the contradiction \\( \\text{Bool} \\leq \\text{Int} \\) because each comparison would see unsolved variable names rather than their resolved types.
 
 The subtyping algorithm handles several fundamental relationships that govern type compatibility in System Fω. Reflexivity ensures that every type is considered a subtype of itself, providing the base case for subtyping derivations. Transitivity allows subtyping relationships to compose through intermediate types, so if \\( A \\leq B \\) and \\( B \\leq C \\), then \\( A \\leq C \\) holds automatically.
 

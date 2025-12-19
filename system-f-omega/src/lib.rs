@@ -115,5 +115,5 @@ fn typecheck_module_impl(source: &str, filename: &str, verbose: bool) -> Result<
 pub fn check_example(example_path: &str) -> Result<(), LibError> {
     let source = std::fs::read_to_string(example_path).map_err(|_| LibError::IoError)?;
 
-    typecheck_module(&source, example_path)
+    typecheck_module_silent(&source, example_path)
 }
