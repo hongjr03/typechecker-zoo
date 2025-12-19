@@ -11,8 +11,9 @@ fn test_type_error() {
     assert!(typecheck_module_silent(source, "test.hs").is_err());
 }
 
-/// Test that existential variables are properly "zonked" (resolved) when checking subtyping.
-/// The else branch returns Bool (from <) but the function is declared to return Int.
+/// Test that existential variables are properly "zonked" (resolved) when
+/// checking subtyping. The else branch returns Bool (from <) but the function
+/// is declared to return Int.
 #[test]
 fn test_if_branch_type_mismatch() {
     let source = r#"

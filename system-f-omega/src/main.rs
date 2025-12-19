@@ -432,5 +432,4 @@ mod tests {
 
         assert!(typecheck_module(source, "test.hs").is_ok());
     }
-
 }
