@@ -24,4 +24,4 @@ cranelift-object = { version = "0.128", optional = true }
 target-lexicon = { version = "0.13", optional = true }
 
 [build-dependencies]
-lalrpop = { version = "0.22.2", features = ["lexer", "unicode"] }
+lalrpop = { version = "0.23.1", features = ["lexer", "unicode"] }

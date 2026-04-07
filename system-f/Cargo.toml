@@ -13,4 +13,4 @@ clap = { version = "4.0", features = ["derive"] }
 ariadne = "0.6"
 
 [build-dependencies]
-lalrpop = { version = "0.22.2", features = ["lexer", "unicode"] }
+lalrpop = { version = "0.23.1", features = ["lexer", "unicode"] }
