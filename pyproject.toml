@@ -1,0 +1,16 @@
+[project]
+name = "typechecker-zoo-tools"
+version = "0.1.0"
+description = "Repository maintenance tools for typechecker-zoo."
+requires-python = ">=3.11"
+dependencies = []
+
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project.scripts]
+translate-repo = "translate_repo:main"
+
+[tool.setuptools]
+py-modules = ["translate_repo"]
