@@ -6,3 +6,4 @@ Cargo.lock
 docs/book
 *.sw[pon]
 *.o
+.env
