@@ -1,36 +1,33 @@
-# Language Design
+# 语言设计
 
-Our System Fω implementation employs a two-layer architecture that separates user-facing syntax from the internal representation used by the type checker. This design pattern, common in  compilers, allows us to provide an ergonomic programming experience while maintaining a clean theoretical foundation for type checking algorithms.
+我们的 System Fω 实现采用两层架构，将用户面向的语法与类型检查器使用的内部表示分离开来。这种设计模式在编译器中很常见，它允许我们在提供符合人体工学的编程体验的同时，为类型检查算法维持一个干净的理论基础。
 
-The **surface language** offers familiar syntax with algebraic data types, pattern matching, and implicit type inference. The **core language** provides an explicit representation of System Fω with kinds, type abstractions, and applications. Translation between these layers handles the complex process of inserting implicit type arguments and managing the  type-level computations that System Fω enables.
+**表面语言**提供熟悉的语法，包含代数数据类型、模式匹配和隐式类型推断。**核心语言**提供 System Fω 的显式表示，包含种类、类型抽象和类型应用。这两层之间的转换处理插入隐式类型参数和管理 System Fω 所支持的类型级计算这一复杂过程。
 
-## The Haskell Hairball
+## Haskell 的乱麻
 
-Before diving into our clean System Fω design, we must acknowledge the elephant in the room: Haskell, the language that wore the hairshirt for two decades and somehow convinced a generation of programmers that this constituted virtue. Our implementation deliberately avoids the accumulated cruft that has transformed what began as an elegant research language into something resembling a Lovecraftian nightmare of interacting language extensions.
+在深入我们干净的 System Fω 设计之前，必须承认房间里的大象：Haskell，一种穿了二十年苦修衬衫的语言，却成功让一代程序员相信这就是美德。我们的实现刻意避开了那些积累的积垢——这些积垢将原本优雅的研究语言变成了一场洛夫克拉夫特式的噩梦，充斥着相互纠缠的语言扩展。
 
-Haskell represents a fascinating case study in how good intentions, academic enthusiasm, and the sunk cost fallacy can combine to create somethign is both a beautiful and a trainwreck at the same time. Consider the design decisions that seemed reasonable at the time but now serve as warnings to future language designers:
+Haskell 是一个有趣的研究案例，展示了善意、学术热情和沉没成本谬误如何共同创造出既美丽又灾难性的东西。回想那些在当时看似合理、如今却成为后世语言设计者警示的设计决策：
 
-* **Call-by-need evaluation**: Lazy evaluation sounds theoretically elegant until you discover that reasoning about space and time complexity requires divination skills, and debugging memory leaks involves consulting tea leaves about thunk accumulation patterns
+* **按需求值**：惰性求值听起来理论优雅，直到你发现推理空间和时间复杂度需要占卜技能，而调试内存泄漏涉及翻阅茶叶渣来推断 thunk 累积模式
+* **扮演依赖类型**：Haskell 没有实现真正的依赖类型，而是发展出一套日益繁琐的类型级编程系统，让你可以假装拥有依赖类型，同时兼具所有复杂性却没有任何理论保证
+* **语言扩展泛滥**：最初几个适度的扩展如今已经转移成超过 200 个语言编译选项，造就的不是一种语言，而是上千个互不兼容、仅共享语法的方言
+* **无尽的 RAM 需求**：GHC 编译器需要大约一个小型戴森球的计算资源才能自举，这使得没有工业级计算基础设施几乎不可能移植到新架构
 
-* **LARPing dependent types**: Rather than implementing actual dependent types, Haskell developed an increasingly baroque system of type-level programming that lets you pretend you have dependent types while maintaining all the complexity and none of the theoretical guarantees
+Haskell 虽然具有历史重要性且技术性极强，却是一份关于*如何不*设计语言的绝佳指南。
 
-* **Language extension proliferation**: What started as a few modest extensions has metastasized into a catalog of over 200 language pragmas, creating not one language but a thousand mutually incompatible dialects that share only syntax
+## 表面语言语法
 
-* **Infinite RAM Requirements**: The GHC compiler requires approximately the computational resources of a small Dyson swarm to bootstrap itself, making it effectively impossible to port to new architectures without access to industrial-scale computing infrastructure
+表面语言提供类似 Haskell 的语法，程序员可以自然地使用。用户编写的程序不包含显式类型抽象或类型应用，编译器会在详细展开到核心语言的过程中自动插入这些内容。
 
-Haskell, while historically important and technically very interesting, is an excellent guide for how *not* to design a language.
-
-## Surface Language Syntax
-
-The surface language provides a Haskell-like syntax that programmers can work with naturally. Users write programs without explicit type abstractions or applications, and the compiler inserts these automatically during elaboration to the core language.
-
-### Data Type Declarations
+### 数据类型声明
 
 ```rust
 #![enum!("system-f-omega/src/surface.rs", Declaration)]
 ```
 
-Algebraic data types form the foundation of our surface language. These declarations create both type constructors and value constructors:
+代数数据类型构成了我们表面语言的基础。这些声明同时引入类型构造子和值构造子：
 
 ```haskell
 data Bool = True | False;
@@ -39,20 +36,20 @@ data Either a b = Left a | Right b;
 data List a = Nil | Cons a (List a);
 ```
 
-Each data declaration introduces:
-- A **type constructor** (like `Maybe` or `List`) that can be applied to type arguments
-- **Value constructors** (like `Nothing`, `Just`, `Nil`, `Cons`) for creating values of the type
-- Implicit **kind information** determined by the number and usage of type parameters
+每个数据声明引入：
+- 一个**类型构造子**（如 `Maybe` 或 `List`），可应用于类型参数
+- **值构造子**（如 `Nothing`、`Just`、`Nil`、`Cons`），用于创建该类型的值
+- 隐式的**种类信息**，由类型参数的数量和使用情况决定
 
-The surface language allows natural type parameter syntax where `data List a` automatically implies that `List` has kind `* -> *`.
+表面语言允许使用自然的类型参数语法，其中 `data List a` 自动表示 `List` 拥有种类 `* -> *`。
 
-### Type Signatures and Schemes
+### 类型签名与类型模式
 
 ```rust
 #![struct!("system-f-omega/src/surface.rs", TypeScheme)]
 ```
 
-Type schemes provide explicit polymorphic type signatures using familiar quantifier syntax:
+类型模式使用熟悉的量词语法提供显式多态类型签名：
 
 ```haskell
 identity :: a -> a;
@@ -60,233 +57,233 @@ const :: a -> b -> a;
 map :: (a -> b) -> List a -> List b;
 ```
 
-The surface language uses implicit quantification - any free type variables in a type signature are automatically universally quantified. This provides the convenience of languages like Haskell while maintaining the theoretical precision of System Fω.
+表面语言使用隐式量化——类型签名中任何自由类型变量都会自动被全称量化。这提供了类似 Haskell 语言的便利性，同时保持了 System Fω 的理论精确性。
 
-### Surface Types
+### 表面类型
 
 ```rust
 #![enum!("system-f-omega/src/surface.rs", Type)]
 ```
 
-The surface type system includes:
+表面类型系统包括：
 
-- **Type variables** (`a`, `b`) for generic parameters
-- **Type constructors** (`Int`, `Bool`, `List`) for concrete and parameterized types
-- **Function types** (`a -> b`) with right-associative arrow notation
-- **Type application** (`List a`, `Maybe Int`) for applying type constructors
+- **类型变量**（`a`, `b`）用于泛型参数
+- **类型构造子**（`Int`, `Bool`, `List`）用于具体类型和参数化类型
+- **函数类型**（`a -> b`），使用右结合的箭头记号
+- **类型应用**（`List a`, `Maybe Int`），用于应用类型构造子
 
-Notably absent from the surface language are explicit type abstractions, type applications to terms, and kind annotations. These are inferred and inserted automatically during elaboration.
+表面语言中明显缺失的是显式类型抽象、对项的类型应用以及种类标注。这些内容会在详细展开过程中自动推断并插入。
 
-### Expression Language
+### 表达式语言
 
 ```rust
 #![enum!("system-f-omega/src/surface.rs", Expr)]
 ```
 
-The surface expression language supports:
+表面表达式语言支持：
 
-**Variables and Literals**: Standard identifiers and numeric/boolean constants
-**Function Application**: `f x` applies function `f` to argument `x`
-**Lambda Abstractions**: `\x -> e` creates anonymous functions
-**Pattern Matching**: `match e { p1 -> e1; p2 -> e2; }` for case analysis
-**Constructor Application**: `Just 42`, `Cons x xs` for building data structures
+**变量与字面量**：标准标识符和数值/布尔常量  
+**函数应用**：`f x` 将函数 `f` 应用于参数 `x`  
+**Lambda 抽象**：`\x -> e` 创建匿名函数  
+**模式匹配**：`match e { p1 -> e1; p2 -> e2; }` 用于情况分析  
+**构造子应用**：`Just 42`、`Cons x xs` 用于构建数据结构
 
-The surface language omits explicit type abstractions (`Λα. e`) and type applications (`e [τ]`). These System Fω constructs are handled automatically by the elaboration process.
+表面语言省略了显式类型抽象（`Λα. e`）和类型应用（`e [τ]`）。这些 System Fω 的构造由详细展开过程自动处理。
 
-## Core Language Representation
+## 核心语言表示
 
-The core language provides an explicit encoding of System Fω with full type-level computation capabilities. This representation makes type checking tractable by exposing all implicit operations from the surface language.
+核心语言提供了 System Fω 的显式编码，具备完整的类型级计算能力。这种表示通过暴露表面语言中所有隐式操作，使类型检查易于处理。
 
-### Core Types and Kinds
+### 核心类型与种类
 
 ```rust
 #![enum!("system-f-omega/src/core.rs", Kind)]
 ```
 
-The kind system classifies types hierarchically:
-- **`Star`** (`*`) for ordinary types like `Int`, `Bool`, `List Int`
-- **`Arrow(k1, k2)`** for type constructors like `Maybe : * -> *` or `Either : * -> * -> *`
+种类系统按层次对类型进行分类：
+- **`Star`**（`*`）用于普通类型，如 `Int`, `Bool`, `List Int`
+- **`Arrow(k1, k2)`** 用于类型构造子，如 `Maybe : * -> *` 或 `Either : * -> * -> *`
 
 ```rust
 #![enum!("system-f-omega/src/core.rs", CoreType)]
 ```
 
-Core types include all the expressive power of System Fω:
+核心类型包含了 System Fω 的所有表达能力：
 
-**Type Variables**: Both ordinary (`Var`) and existential (`ETVar`) variables for unification
-**Type Constructors**: Built-in types (`Con`) like `Int`, `Bool`
-**Function Types**: Explicit arrow types (`Arrow`)
-**Universal Quantification**: `Forall` types with kind-annotated bound variables
-**Type Application**: `App` for applying type constructors to arguments
-**Type Abstraction**: `TAbs` for creating type-level functions
+**类型变量**：既有普通变量（`Var`）也有存在变量（`ETVar`），用于合一  
+**类型构造子**：内置类型（`Con`），如 `Int`、`Bool`  
+**函数类型**：显式箭头类型（`Arrow`）  
+**全称量化**：使用带种类标注的绑定变量的 `Forall` 类型  
+**类型应用**：`App` 用于将类型构造子应用于参数  
+**类型抽象**：`TAbs` 用于创建类型级函数
 
-The core representation makes explicit all type-level computation that remains implicit in the surface language.
+核心表示显式化了表面语言中隐式的所有类型级计算。
 
-### Core Terms
+### 核心项
 
 ```rust
 #![enum!("system-f-omega/src/core.rs", CoreTerm)]
 ```
 
-Core terms expose the full System Fω term language:
+核心术语展现了完整的 System Fω 项语言：
 
-**Variables and Literals**: Direct correspondence with surface language
-**Function Abstraction/Application**: Explicitly typed lambda calculus
-**Type Abstraction**: `TyAbs` for creating polymorphic functions
-**Type Application**: `TyApp` for instantiating polymorphic functions
-**Data Constructors**: `Con` for algebraic data type constructors
-**Pattern Matching**: `Match` with explicit constructor patterns
+**变量与字面量**：与表层语言直接对应  
+**函数抽象/应用**：显式类型化的 lambda 演算  
+**类型抽象**：`TyAbs` 用于创建多态函数  
+**类型应用**：`TyApp` 用于实例化多态函数  
+**数据构造器**：`Con` 用于代数数据类型的构造器  
+**模式匹配**：`Match` 配合显式构造器模式
 
-Every implicit type operation from the surface language becomes explicit in the core representation.
+表层语言中所有隐式的类型操作在核心表示中都变得显式。
 
-## Pattern Matching and Case Analysis
+## 模式匹配与分支分析
 
-Pattern matching provides the fundamental mechanism for deconstructing algebraic data types and extracting their constituent values. Our implementation supports comprehensive pattern matching that integrates seamlessly with the type system, ensuring that all pattern analyses are both exhaustive and type-safe.
+模式匹配提供了分解代数数据类型并提取其构成值的基本机制。我们的实现对模式匹配提供全面支持，与类型系统无缝集成，确保所有模式分析既完备又类型安全。
 
-The pattern matching construct `match e { p1 -> e1; p2 -> e2; }` performs case analysis on the scrutinee expression `e`, attempting to match it against each pattern in sequence. When a pattern matches, the corresponding branch expression executes with pattern variables bound to the extracted values.
+模式匹配结构 `match e { p1 -> e1; p2 -> e2; }` 对审查表达式 `e` 执行分支分析，尝试按顺序将 `e` 与每个模式进行匹配。当某个模式匹配成功时，对应的分支表达式会执行，其中模式变量绑定到提取的值。
 
-### Constructor Patterns and Variable Binding
+### 构造器模式与变量绑定
 
 ```rust
 #![enum!("system-f-omega/src/surface.rs", Pattern)]
 ```
 
-Constructor patterns decompose algebraic data types by matching against specific constructors and binding their arguments to pattern variables. The pattern `Cons x xs` matches values constructed with `Cons`, binding the first argument to `x` and the second to `xs`. This binding mechanism provides type-safe access to the components of structured data.
+构造器模式通过匹配特定的构造器并将其参数绑定到模式变量来分解代数数据类型。模式 `Cons x xs` 匹配用 `Cons` 构造的值，将第一个参数绑定到 `x`，第二个绑定到 `xs`。这种绑定机制提供了对结构化数据组件的类型安全访问。
 
-Variable patterns like `x` match any value and bind the entire matched value to the variable name. The pattern matching compiler ensures that each variable binding receives the appropriate type based on the context in which the pattern appears.
+像 `x` 这样的变量模式可以匹配任何值，并将整个匹配值绑定到变量名。模式匹配编译器确保每个变量绑定根据模式出现的上下文获得适当的类型。
 
-Wildcard patterns represented by `_` match any value without creating bindings, useful for ignoring components that are not needed in the branch expression. The type checker verifies that wildcard patterns are used consistently with the expected type structure.
+通配符模式用 `_` 表示，匹配任意值但不创建绑定，适用于忽略分支表达式中不需要的组件。类型检查器验证通配符模式的使用是否与期望的类型结构一致。
 
-### Exhaustiveness and Type Safety
+### 完备性与类型安全
 
-The pattern matching implementation enforces exhaustiveness, requiring that pattern sets cover all possible values of the matched type. For algebraic data types, this means providing patterns for every constructor defined in the type declaration. The compiler rejects programs with non-exhaustive patterns, preventing runtime errors that could occur when unhandled cases arise.
+模式匹配实现强制完备性，要求模式集合覆盖被匹配类型的所有可能值。对于代数数据类型，这意味着为类型声明中定义的每个构造器提供模式。编译器拒绝非完备模式，从而防止未处理情况可能导致的运行时错误。
 
-Type safety extends through pattern matching by ensuring that pattern variables receive types consistent with the constructor arguments they represent. When matching `Just x` against a `Maybe Int`, the variable `x` automatically receives type `Int`, eliminating the need for explicit type annotations or runtime type checks.
+类型安全通过模式匹配得以扩展，确保模式变量获得的类型与其所表示的构造器参数一致。当对 `Maybe Int` 类型匹配 `Just x` 时，变量 `x` 自动获得类型 `Int`，无需显式类型注解或运行时类型检查。
 
-### Nested Patterns and Deep Matching
+### 嵌套模式与深度匹配
 
-Patterns can nest arbitrarily deeply, enabling  decomposition of complex data structures in single pattern matches. The pattern `Cons (Just x) xs` simultaneously matches the outer list structure and the inner `Maybe` type, binding both the unwrapped value `x` and the remaining list `xs` in a single operation.
+模式可以任意深度嵌套，使得一次模式匹配就能分解复杂的数据结构。模式 `Cons (Just x) xs` 同时匹配外层列表结构和内层 `Maybe` 类型，在一次操作中既解包了值 `x`，又绑定了剩余列表 `xs`。
 
-Nested pattern matching interacts correctly with polymorphism, maintaining type relationships across multiple levels of structure. The type checker propagates type information through nested patterns, ensuring that all bindings receive their most general types while maintaining compatibility with the overall pattern context.
+嵌套模式匹配与多态性正确交互，在多个结构层级间维持类型关系。类型检查器将类型信息传播到嵌套模式中，确保所有绑定获得它们的最一般类型，同时与整体模式上下文保持兼容。
 
-## Algebraic Data Types
+## 代数数据类型
 
-Algebraic data types provide the foundation for structured data in our System Fω implementation, combining sum types (disjoint unions) and product types (tuples and records) into a unified framework that supports both data abstraction and generic programming.
+代数数据类型为我们的 System Fω 实现中的结构化数据提供了基础，将和类型（不相交联合）与积类型（元组和记录）组合到一个统一框架中，支持数据抽象和泛型编程。
 
-The data declaration syntax enables concise specification of complex type structures while automatically deriving the associated constructors, destructors, and type information needed for pattern matching and type checking.
+数据声明语法能够简洁地指定复杂类型结构，同时自动推导出模式匹配和类型检查所需的关联构造器、解构器和类型信息。
 
-### Sum Types and Tagged Unions
+### 和类型与带标签联合
 
-Sum types represent choices between alternative data representations, with each alternative identified by a unique constructor tag. The declaration `data Either a b = Left a | Right b` creates a sum type with two alternatives, each carrying a value of a different type.
+和类型表示不同数据表示之间的选择，每个选项由唯一的构造器标签标识。声明 `data Either a b = Left a | Right b` 创建了一个包含两个选项的和类型，每个选项携带一个不同类型的值。
 
-Sum types enable type-safe representation of optional values, error conditions, and other scenarios where data can take one of several forms. The type `Maybe a = Nothing | Just a` encapsulates the common pattern of values that might be absent, replacing null pointer patterns with type-safe alternatives.
+和类型使得可选值、错误条件以及其他数据可能呈现多种形式的场景能够以类型安全的方式表示。类型 `Maybe a = Nothing | Just a` 封装了值可能缺失的常见模式，用类型安全的替代方式取代了空指针模式。
 
-Each constructor in a sum type creates values that are distinguishable through pattern matching, enabling exhaustive case analysis that the type checker can verify statically. The tag information embedded in sum type values allows pattern matching to dispatch correctly to the appropriate branch without runtime type inspection.
+和类型中的每个构造器创建的值可以通过模式匹配进行区分，实现类型检查器可以静态验证的完备分支分析。和类型值中嵌入的标签信息使得模式匹配能够正确分派到合适的分支，无需运行时类型检查。
 
-### Product Types and Data Aggregation
+### 积类型与数据聚合
 
-Product types combine multiple values into single composite structures, with each component accessible through pattern matching or projection operations. Constructor syntax like `Cons a (List a)` creates product types where each constructor argument represents a field in the resulting structure.
+积类型将多个值组合成单个复合结构，每个组件可以通过模式匹配或投影操作访问。诸如 `Cons a (List a)` 这样的构造器语法创建了积类型，其中每个构造器参数代表结果结构中的一个字段。
 
-Product types support both named and positional field access through pattern matching, providing flexibility in how composite data gets decomposed. The pattern `Cons head tail` extracts both components of a list cell, binding them to appropriately typed variables for use in the branch expression.
+积类型通过模式匹配支持命名和位置字段访问，在分解复合数据时提供灵活性。模式 `Cons head tail` 解构了列表单元格的两个组件，将它们绑定到适当类型的变量，以便在分支表达式中使用。
 
-Tuples represent anonymous product types where component ordering determines access patterns. While our surface language does not include explicit tuple syntax, the pattern matching mechanism supports tuple-like destructuring of constructor arguments.
+元组表示匿名积类型，其中组件顺序决定访问模式。虽然我们的表层语言不包含显式元组语法，但模式匹配机制支持对构造器参数进行类似元组的解构。
 
-### Recursive Types and Inductive Data Structures
+### 递归类型与归纳数据结构
 
-Recursive type definitions enable the construction of arbitrarily large data structures through self-reference in constructor arguments. The declaration `data List a = Nil | Cons a (List a)` defines lists inductively, with the base case `Nil` and the recursive case `Cons` that references the type being defined.
+递归类型定义通过在构造器参数中自引用，使得能够构造任意大小的数据结构。声明 `data List a = Nil | Cons a (List a)` 归纳地定义了列表，其中 `Nil` 是基例，`Cons` 是递归情形，引用了正在定义的类型。
 
-Recursive types interact correctly with polymorphism, enabling the definition of generic container types that work uniformly across all element types. The list type `List a` demonstrates how recursive structure combines with parametric polymorphism to create flexible, reusable data abstractions.
+递归类型与多态性正确交互，使得能够定义对所有元素类型统一工作的通用容器类型。列表类型 `List a` 展示了递归结构如何与参数多态结合，创建灵活可重用的数据抽象。
 
-Inductive types support well-founded recursion through pattern matching, enabling terminating recursive functions that process arbitrarily large data structures. The pattern matching compiler ensures that recursive calls operate on structurally smaller arguments, supporting termination analysis and optimization.
+归纳类型通过模式匹配支持良基递归，使得能够处理任意大数据结构的终止递归函数。模式匹配编译器确保递归调用操作在结构上更小的参数上，从而支持终止分析和优化。
 
-### Kind Inference and Type Constructor Classification
+### 类型推断与类型构造器分类
 
-Data type declarations automatically infer appropriate kinds for the defined type constructors based on their parameter structure and usage patterns. Simple types like `Bool` receive kind `*`, while parameterized types like `Maybe` receive kinds of the form `* -> *`.
+数据类型声明会根据其参数结构和用法模式，自动为所定义的类型构造器推断出合适的种类。像 `Bool` 这样的简单类型获得种类 `*`，而像 `Maybe` 这样的参数化类型则获得形如 `* -> *` 的种类。
 
-Higher-kinded types emerge naturally from data declarations with multiple parameters or higher-order structure. The type `Either` receives kind `* -> * -> *`, indicating a type constructor that requires two type arguments to produce a complete type.
+高阶类型会从具有多个参数或高阶结构的数据声明中自然涌现。类型 `Either` 获得种类 `* -> * -> *`，表明它是一个需要两个类型参数才能构成完整类型的类型构造器。
 
-Kind inference propagates through type expressions, ensuring that type applications in data constructors receive appropriate kind annotations for use in the core language representation. This automatic kind inference eliminates the need for explicit kind annotations while maintaining the precision required for System Fω's  type-level computation.
+种类推断会通过类型表达式传播，确保数据构造器中的类型应用能获得合适的种类标注，以便在核心语言表示中使用。这种自动种类推断消除了显式种类标注的需要，同时保持了 System Fω 类型级计算所需的精确性。
 
-## Elaboration Process
+## 阐述过程
 
-Elaboration forms the critical bridge between the user-friendly surface language and the theoretically precise core language, transforming high-level programming constructs into explicit System Fω representations that enable sound type checking and compilation. This translation process handles the complex task of inferring and inserting all implicit type-level operations that the surface language deliberately omits for conciseness and programmer convenience.
+阐述过程是用户友好的表面语言与理论精确的核心语言之间的关键桥梁，它将高级编程构造转换为显式的 System Fω 表示，从而实现可靠的类型检查和编译。这个转换过程负责推断并插入所有隐式的类型级操作——这些操作为了简洁性和程序员便利性而被表面语言刻意省略。
 
-The elaboration algorithm operates through multiple interdependent phases that work together to produce well-typed core language programs. Each phase builds upon the results of previous phases, creating a pipeline that systematically transforms surface constructs into their explicit core equivalents while maintaining type safety and semantic preservation.
+阐述算法通过多个相互依赖的阶段协同工作，以生成类型正确的核心语言程序。每个阶段都建立在前一阶段结果的基础上，形成一个系统性的流水线，将表面构造逐步转换为其显式的核心等价形式，同时保持类型安全性和语义保持性。
 
-### Kind Inference and Type Constructor Analysis
+### 种类推断与类型构造器分析
 
-Kind inference represents one of the most  aspects of elaboration, requiring analysis of type constructor usage patterns to determine their proper classification in the kind hierarchy. The process begins by analyzing type parameters in data declarations to determine the kinds of type constructors being defined. A simple data type like `Bool` with no parameters receives kind \\( \\star \\), indicating it represents a complete type that can classify terms.
+种类推断是阐述过程中最为重要的方面之一，需要分析类型构造器的使用模式，以确定它们在种类层次结构中的正确分类。该过程首先分析数据声明中的类型参数，以确定被定义的类型构造器的种类。像 `Bool` 这样没有参数的简单数据类型获得种类 \\( \\star \\)，表示它是一个可以分类项（terms）的完整类型。
 
-Parameterized data types require more complex analysis to determine their proper kinds. The declaration `data Maybe a = Nothing | Just a` reveals that `Maybe` is a type constructor that takes one type argument, yielding kind \\( \\star \\to \\star \\). Multi-parameter types like `Either a b` receive kinds of the form \\( \\star \\to \\star \\to \\star \\), reflecting their need for multiple type arguments before producing complete types.
+参数化数据类型需要更复杂的分析来确定其正确的种类。声明 `data Maybe a = Nothing | Just a` 表明 `Maybe` 是一个接受一个类型参数的类型构造器，因此得到种类 \\( \\star \\to \\star \\)。像 `Either a b` 这样的多参数类型获得形如 \\( \\star \\to \\star \\to \\star \\) 的种类，反映了它们在产生完整类型之前需要多个类型参数。
 
-The kind inference algorithm propagates kind constraints through type applications and signatures, ensuring consistency across the entire program. When a type constructor appears in a type application like `Maybe Int`, the algorithm verifies that the argument `Int` has kind \\( \\star \\) to match the expected parameter kind of `Maybe`. This constraint propagation catches kind errors early in the elaboration process, preventing malformed types from reaching the core language.
+种类推断算法会通过类型应用和签名传播种类约束，确保整个程序的一致性。当类型构造器出现在像 `Maybe Int` 这样的类型应用中时，算法会验证参数 `Int` 的种类是否为 \\( \\star \\)，以匹配 `Maybe` 的期望参数种类。这种约束传播能在阐述过程的早期捕获种类错误，防止格式错误的类型进入核心语言。
 
-The final step inserts implicit kind abstractions in the core representation, making explicit the kind-level lambda abstractions that correspond to parameterized type constructors. The surface type `Maybe` becomes a kind-level function \\( \\lambda\\alpha :: \\star. \\text{Maybe}\\, \\alpha \\) in the core language, exposing the type-level computation that remains hidden in the surface syntax.
+最后一步是在核心表示中插入隐式的种类抽象，使对应于参数化类型构造器的种类级 lambda 抽象显式化。表面类型 `Maybe` 在核心语言中变成一个种类级函数 \\( \\lambda\\alpha :: \\star. \\text{Maybe}\\, \\alpha \\)，从而暴露了在表面语法中隐藏的类型级计算。
 
-### Type Inference and Polymorphic Instantiation
+### 类型推断与多态实例化
 
-Surface programs deliberately omit many type-level operations to maintain readability and reduce annotation burden, requiring the elaboration process to infer and insert these operations automatically. The most complex aspect involves handling polymorphic functions, which use implicit universal quantification in the surface language but require explicit type abstractions and applications in the core.
+表面程序为了保持可读性并减少标注负担，刻意省略了许多类型级操作，这就要求阐述过程自动推断并插入这些操作。最复杂的方面涉及多态函数的处理，这些函数在表面语言中使用隐式的全称量化，但在核心语言中需要显式的类型抽象和应用。
 
-Type abstraction insertion analyzes function definitions to identify polymorphic variables that must be abstracted at the type level. A surface function like `identity x = x` with inferred type `a -> a` becomes a core expression \\( \\Lambda\\alpha :: \\star. \\lambda x : \\alpha. x \\), making explicit the type-level abstraction over the polymorphic variable `a`. This transformation ensures that the core representation captures the full generality of polymorphic functions.
+类型抽象插入阶段会分析函数定义，识别那些必须在类型级进行抽象的多态变量。表面函数如 `identity x = x` 推断出的类型为 `a -> a`，会变成核心表达式 \\( \\Lambda\\alpha :: \\star. \\lambda x : \\alpha. x \\)，使多态变量 `a` 上的类型级抽象显式化。这种转换确保了核心表示能捕获多态函数的全部通用性。
 
-Type application insertion occurs at call sites of polymorphic functions, where the surface language relies on type inference to determine appropriate instantiations. When a polymorphic function like `identity` is applied to a specific argument like `42`, the elaboration process inserts the type application \\( \\text{identity}[\\text{Int}]\\, 42 \\), making explicit the instantiation of the type parameter with `Int`.
+类型应用插入发生在多态函数的调用点，表面语言依赖类型推断来确定合适的实例化。当一个多态函数（如 `identity`）被应用于一个具体参数（如 `42`）时，阐述过程会插入类型应用 \\( \\text{identity}[\\text{Int}]\\, 42 \\)，使类型参数与 `Int` 的实例化显式化。
 
-The generation of existential variables handles unknown types that arise during inference, creating placeholders that the constraint solver can resolve later. When the elaboration process encounters expressions whose types cannot be determined immediately, it generates fresh existential variables and creates constraints that guide the solver toward appropriate instantiations.
+存在变量的生成用于处理推断过程中出现的未知类型，创建占位符以便约束求解器稍后解析。当阐述过程遇到无法立即确定类型的表达式时，它会生成新的存在变量并创建约束，引导求解器找到合适的实例化。
 
-### Pattern Compilation and Constructor Analysis
+### 模式编译与构造器分析
 
-Pattern matching in the surface language undergoes substantial transformation during elaboration, converting high-level pattern matching constructs into explicit case analysis that the core language can represent directly. This compilation process must handle the complex interactions between pattern structure, type information, and variable binding that make pattern matching both powerful and type-safe.
+表面语言中的模式匹配在阐述过程中会经历实质性转换，将高级模式匹配构造转换为核心语言可以直接表示的显式 case 分析。这个编译过程必须处理模式结构、类型信息和变量绑定之间复杂的交互关系，这使得模式匹配既强大又类型安全。
 
-Constructor pattern analysis examines each pattern to determine the type of the scrutinee expression and the types of bound variables. A pattern like `Cons x xs` matching against `List Int` reveals that `x` has type `Int` and `xs` has type `List Int`. This type information gets embedded in the core representation to guide type checking and code generation.
+构造器模式分析会检查每个模式，以确定被匹配的表达式（scrutinee）的类型以及绑定变量的类型。例如，针对 `List Int` 的模式 `Cons x xs` 揭示出 `x` 的类型是 `Int`，`xs` 的类型是 `List Int`。这种类型信息会被嵌入核心表示中，以指导类型检查和代码生成。
 
-The generation of core match expressions creates explicit case analysis constructs that enumerate all possible constructor alternatives. Surface pattern matches become core expressions of the form \\( \\text{match}\\, e\\, \\{ \\text{C}_1\\, x_1 \\to e_1; \\ldots; \\text{C}_n\\, x_n \\to e_n \\} \\), with each alternative explicitly typed and all constructor possibilities accounted for.
+核心 match 表达式的生成会创建显式的 case 分析结构，枚举所有可能的构造器替代项。表面模式匹配变成形如 \\( \\text{match}\\, e\\, \\{ \\text{C}_1\\, x_1 \\to e_1; \\ldots; \\text{C}_n\\, x_n \\to e_n \\} \\) 的核心表达式，每个替代项都有显式类型，并且所有构造器可能性都被考虑到位。
 
-Pattern variable binding requires careful scope management to ensure that variables bound in patterns are available with the correct types in branch expressions. The elaboration process maintains binding contexts that track the types of pattern variables and ensures that core expressions correctly reference these bindings with appropriate type information.
+模式变量绑定需要仔细的作用域管理，以确保模式中绑定的变量在分支表达式中以正确的类型可用。阐述过程维护着绑定上下文，跟踪模式变量的类型，并确保核心表达式能以正确的类型信息引用这些绑定。
 
-Exhaustiveness checking during pattern compilation verifies that pattern sets cover all possible constructor alternatives, preventing runtime errors from unhandled cases. The elaboration process analyzes constructor declarations to determine the complete set of alternatives and reports errors when patterns are non-exhaustive, maintaining the type safety guarantees that System Fω provides.
+在模式编译期间，穷尽性检查会验证模式集是否覆盖了所有可能的构造子选项，从而防止因未处理情况而导致的运行时错误。精化过程分析构造子声明以确定完整的备选集合，并在模式不穷尽时报告错误，从而维护 System Fω 所提供的类型安全保障。
 
-## Design Rationale
+## 设计原理
 
-The two-layer architecture of our System Fω implementation represents a carefully considered approach to balancing theoretical precision with practical usability, addressing fundamental tensions that arise when building advanced type systems for real-world programming. This design philosophy emerges from the recognition that pure System Fω, while theoretically elegant, imposes significant annotation burden that makes it impractical for everyday programming tasks.
+我们的 System Fω 实现采用的两层架构是一种经过深思熟虑的方法，旨在平衡理论精确性与实际可用性，解决在构建面向真实编程的高级类型系统时出现的基本矛盾。这一设计理念源于认识到：纯 System Fω 虽然在理论上优雅，但施加了巨大的标注负担，使其不适用于日常编程任务。
 
-### Programmer Productivity and Cognitive Load Management
+### 程序员生产力与认知负荷管理
 
-The surface language prioritizes programmer productivity by eliminating the explicit type-level operations that System Fω requires while preserving all the expressive power of the underlying type system. Programmers can write natural, intuitive code using familiar algebraic data types and pattern matching without being forced to understand or manipulate higher-kinded types, type applications, or kind annotations directly.
+表层语言通过消除 System Fω 所需的显式类型级操作，同时保留底层类型系统的全部表达能力，优先考虑程序员的生产力。程序员可以使用熟悉的代数数据类型和模式匹配编写自然、直观的代码，而无需被迫直接理解或操作高阶类型、类型应用或种类标注。
 
-This approach recognizes that cognitive load represents a scarce resource in software development. By hiding the complexity of type-level computation behind a clean surface syntax, we enable programmers to focus on problem-solving rather than wrestling with the mechanical details of type system operation. The surface language provides enough abstraction that polymorphic programming feels natural and obvious, even though the underlying elaboration process involves  type inference and constraint solving.
+这种方法认识到认知负荷是软件开发中的稀缺资源。通过将类型级计算的复杂性隐藏在清晰的表层语法之后，我们使程序员能够专注于解决问题，而不是与类型系统的机械细节纠缠。表层语言提供了足够的抽象，使多态编程感觉自然且显而易见，尽管底层的精化过程涉及类型推断和约束求解。
 
-The implicit quantification system exemplifies this philosophy. Where pure System Fω requires explicit type abstractions like \\( \\Lambda\\alpha :: \\star. \\lambda x : \\alpha. x \\), our surface language allows the simple definition `identity x = x` with automatic inference of the polymorphic type `a -> a`. This transformation eliminates tedious annotation while preserving full generality and type safety.
+隐式量化系统体现了这一理念。纯 System Fω 需要像 \\( \\Lambda\\alpha :: \\star. \\lambda x : \\alpha. x \\) 这样的显式类型抽象，而我们的表层语言允许简单的定义 `identity x = x`，并自动推断出多态类型 `a -> a`。这种转换消除了繁琐的标注，同时保留了完全的通用性和类型安全性。
 
-### Type Safety and Theoretical Soundness
+### 类型安全与理论可靠性
 
-The core language ensures that all the theoretical guarantees of System Fω remain intact by making every type operation explicit and checkable. This explicit representation enables rigorous type checking algorithms that can verify program correctness with mathematical precision, preventing the subtle errors that can arise when implicit operations are handled incorrectly.
+核心语言通过使每个类型操作显式且可检查，确保 System Fω 的所有理论保证保持完整。这种显式表示支持严格的类型检查算法，能够以数学精度验证程序正确性，防止因错误处理隐式操作而出现的细微错误。
 
-By elaborating surface programs to core representations, we gain access to the full theoretical machinery of System Fω, including decidable type checking, principal types, and strong normalization. The core language serves as a certificate of correctness, providing concrete evidence that surface programs satisfy all the constraints of the type system.
+通过将表层程序精化为核心表示，我们获得了 System Fω 的完整理论机制，包括可判定的类型检查、主类型和强规范化。核心语言作为正确性的证书，提供具体证据表明表层程序满足类型系统的所有约束。
 
-The explicit nature of core representations also enables advanced optimizations and program transformations that rely on precise type information. Code generators can exploit type-level information to produce efficient implementations, while program analysis tools can reason about program behavior with greater precision than would be possible with surface-level representations alone.
+核心表示的显式性质还支持依赖于精确类型信息的高级优化和程序变换。代码生成器可以利用类型级信息生成高效实现，而程序分析工具可以比仅使用表层表示更精确地推理程序行为。
 
-### Modularity and Language Evolution
+### 模块化与语言演化
 
-The separation between surface and core languages provides crucial modularity that enables independent evolution of user-facing features and theoretical foundations. Surface language features can be added, modified, or removed without affecting the core type checking algorithms, provided the elaboration process can translate them to appropriate core representations.
+表层语言与核心语言的分离提供了关键的模块性，使得面向用户的功能和理论基础能够独立演化。只要精化过程能够将表层语言特性翻译成适当的核心表示，就可以添加、修改或删除它们，而不会影响核心类型检查算法。
 
-This modularity proves essential for language experimentation and extension. New surface constructs like syntactic sugar, alternative pattern matching styles, or domain-specific language features can be implemented entirely through elaboration without requiring changes to the type checker or core language semantics. This flexibility enables rapid prototyping of language features while maintaining implementation stability.
+这种模块性对于语言实验和扩展至关重要。新的表层结构，如语法糖、替代的模式匹配风格或领域特定语言功能，可以完全通过精化实现，无需更改类型检查器或核心语言语义。这种灵活性使得语言特性的快速原型设计成为可能，同时保持实现稳定性。
 
-The core language can similarly evolve independently, with improvements to type checking algorithms, optimization passes, or code generation strategies affecting all surface programs automatically through the existing elaboration interface. This separation enables focused development where surface language designers can concentrate on usability while type theorists can focus on correctness and efficiency.
+核心语言也可以独立演化，类型检查算法、优化遍历或代码生成策略的改进通过现有的精化接口自动影响所有表层程序。这种分离支持聚焦开发，表层语言设计者可以专注于可用性，而类型理论家可以专注于正确性和效率。
 
-### Debugging and Developer Understanding
+### 调试与开发者理解
 
-The explicit core representations provide invaluable insight into type checker behavior, enabling developers to understand how their programs are interpreted by the type system. When type errors occur, the core representation shows exactly which type-level operations failed and why, providing much more precise diagnostic information than surface-level error reporting alone could offer.
+显式的核心表示为类型检查器行为提供了宝贵的洞察，使开发者能够理解他们的程序如何被类型系统解释。当类型错误发生时，核心表示准确显示哪个类型级操作失败及其原因，提供了比仅靠表层错误报告更精确的诊断信息。
 
-This debugging capability extends to performance analysis, where core representations reveal the type-level computation overhead imposed by different programming patterns. Developers can examine core representations to understand which surface constructs generate expensive type-level operations and adjust their programming style accordingly.
+这种调试能力扩展到性能分析，核心表示揭示了不同编程模式所施加的类型级计算开销。开发者可以检查核心表示，了解哪些表层结构生成了昂贵的类型级操作，并相应调整编程风格。
 
-The elaboration process itself serves as an educational tool, demonstrating how high-level programming constructs decompose into fundamental type theoretic operations. Students learning advanced type systems can examine the core representations of their programs to develop intuition about how polymorphism, higher-kinded types, and type-level computation actually work.
+精化过程本身作为一种教育工具，展示了高级编程结构如何分解为基本的类型论操作。学习高级类型系统的学生可以检查其程序的核心表示，以培养对多态、高阶类型和类型级计算实际工作原理的直觉。
 
-### Balancing Expressiveness with Accessibility
+### 平衡表现力与可访问性
 
-Our design demonstrates that advanced type systems can be made accessible without sacrificing their theoretical foundations. The surface language captures the essential patterns that programmers want to express - polymorphic functions, generic data structures, type-safe pattern matching - while the core language ensures that these patterns have rigorous foundations in type theory.
+我们的设计表明，高级类型系统可以在不牺牲其理论基础的情况下变得可访问。表层语言捕捉了程序员想要表达的基本模式——多态函数、泛型数据结构、类型安全的模式匹配——而核心语言确保这些模式在类型论中具有严谨的基础。
 
-This balance addresses a fundamental challenge in programming language design: how to provide the benefits of advanced type systems without requiring all programmers to become experts in type theory. By carefully choosing which aspects to make implicit and which to keep explicit, we create a system that scales from beginning programmers writing simple functions to expert developers implementing complex generic libraries.
+这种平衡解决了编程语言设计中的一个基本挑战：如何提供高级类型系统的好处，而不要求所有程序员都成为类型论专家。通过精心选择哪些方面隐式化、哪些保持显式，我们创建了一个从编写简单函数的初学者到实现复杂泛型库的专家开发者都能使用的系统。
 
-The success of this approach validates the broader principle that programming language design should prioritize human factors alongside theoretical considerations. Technical elegance and mathematical precision remain essential, but they must be balanced against the practical realities of software development where programmer time, cognitive load, and learning curves represent real constraints that affect the ultimate utility of programming languages.
+这种方法的成功验证了一个更广泛的原则：编程语言设计应在理论考量之外，优先考虑人文因素。技术优雅性和数学精确性固然重要，但必须与软件开发的现实相平衡——程序员的时间、认知负荷和学习曲线是影响编程语言最终实用性的实际约束。
 
-Through this two-layer architecture, we achieve a System Fω implementation that provides the full power of higher-kinded polymorphism while remaining approachable for programmers who simply want to write correct, generic, type-safe code without becoming experts in the theoretical foundations that make such code possible.
+通过这种双层架构，我们实现了一个 System Fω 实现，它既提供了高阶多态的完整能力，又让那些只想编写正确、通用、类型安全代码，却不想成为支撑这些代码的理论基础专家的程序员能够轻松上手。

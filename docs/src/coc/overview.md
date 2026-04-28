@@ -1,25 +1,25 @@
-# Overview
+# 概述
 
-The Calculus of Constructions (CoC) represents a paradigm shift from the systems we have seen so far. It moves beyond the stratified layers of terms, types, and kinds by unifying them into a single, consistent syntactic framework. In CoC, and the dependent type theories that follow it, types are no longer just static labels; they are first-class citizens that can be manipulated, passed to functions, and returned as results, just like any other value. This unification blurs the line between computation and logic, allowing us to express incredibly precise properties of our programs directly within the type system itself.
+构造演算（CoC）代表了我们所见过系统的一次范式转变。它超越了术语、类型和种类的分层结构，将它们统一到一个单一、一致的句法框架中。在 CoC 以及随后出现的依赖类型理论中，类型不再只是静态标签；它们成了“一等公民”，可以像其他任何值一样被操作、传递给函数，并作为结果返回。这种统一模糊了计算与逻辑之间的界限，使我们能够直接在类型系统内部表达程序中极其精确的性质。
 
-The central innovation that powers this is the **dependent product type**, or **Pi-type (`Π`)**. It is a generalization of the familiar function arrow (\\( \to \\)). Formally, a Pi-type is written as:
+实现这一点的核心创新是**依赖积类型**，或称 **Pi 类型（`Π`）**。它是常见函数箭头（\\( \to \\)）的推广。形式上，Pi 类型写作：
 
 \\[ \Pi x : A . B \\]
 
-This construct has a dual nature. If the variable `x` does *not* appear in the type `B`, then it simplifies to the standard function type \\( A \to B \\). However, if `x` *does* appear in `B`, it becomes a **dependent function type**. This means the type of the function's return value (\\( B \\)) can change based on the *value* of its input (\\( x \\)). For example, we could define a function `create_vector` with the type \\( \Pi n : \text{Nat} . \text{Vector}(\text{Int}, n) \\). This type specifies a function that takes a natural number \\( n \\) and returns a vector of integers whose length is precisely \\( n \\). The type of the output depends on the value of the input.
+这一构造具有双重性质。如果变量 `x` **不**出现在类型 `B` 中，那么它就简化为标准函数类型 \\( A \to B \\)。然而，如果 `x` **确实**出现在 `B` 中，它就成为一个**依赖函数类型**。这意味着函数返回值类型（\\( B \\)）可以基于其输入值（\\( x \\)）而改变。例如，我们可以定义一个类型为 \\( \Pi n : \text{Nat} . \text{Vector}(\text{Int}, n) \\) 的函数 `create_vector`。该类型指定了一个函数，它接受一个自然数 \\( n \\)，并返回一个长度恰好为 \\( n \\) 的整数向量。输出的类型取决于输入的值。
 
-In our AST, this powerful concept is represented by `Term::Pi(String, Box<Term>, Box<Term>, bool)`. The term that inhabits, or is a "proof" of, a Pi-type is the familiar lambda abstraction, `Term::Abs(String, Box<Term>, Box<Term>)`, written \\( \lambda x : A . t \\). This creates a dependent function whose body \\( t \\) has the type \\( B \\), where \\( B \\) may refer to the value \\( x \\).
+在我们的抽象语法树（AST）中，这一强大概念由 `Term::Pi(String, Box<Term>, Box<Term>, bool)` 表示。作为 Pi 类型的“居民”或“证明”的项是熟悉的 lambda 抽象，即 `Term::Abs(String, Box<Term>, Box<Term>)`，写作 \\( \lambda x : A . t \\)。这会创建一个依赖函数，其体（body）\\( t \\) 具有类型 \\( B \\)，而 \\( B \\) 可以引用值 \\( x \\)。
 
-This newfound power raises a question: if types like \\( \text{Nat} \\) and \\( \text{Vector} \\) can be passed around like values, what is their type? This leads to the concept of **universes** or **sorts**. A universe is a type that contains other types. The Calculus of Constructions introduces a hierarchy of these universes to maintain logical consistency. This hierarchy includes `Prop` (the type of logical propositions, which have no computational content), `Type_0` (the universe containing data types like \\( \text{Nat} \\)), `Type_1` (the universe containing `Type_0`), and so on, forming an infinite tower. In our AST, `Term::Sort(Universe)` represents a term that is one of these universes. The `Universe` enum itself defines a language for calculating universe levels, which is crucial for preventing paradoxes.
+这种新获得的能力引发了一个问题：如果像 \\( \text{Nat} \\) 和 \\( \text{Vector} \\) 这样的类型可以像值一样被传递，那么它们的类型又是什么？这引出了**宇宙**或**种类**的概念。宇宙是一种包含其他类型的类型。构造演算引入了一个宇宙层级来维持逻辑一致性。该层级包括 `Prop`（逻辑命题的类型，没有计算内容）、`Type_0`（包含像 \\( \text{Nat} \\) 这样的数据类型的宇宙）、`Type_1`（包含 `Type_0` 的宇宙），以此类推，形成一个无限的层级塔。在我们的 AST 中，`Term::Sort(Universe)` 表示一个属于某个宇宙的项。`Universe` 枚举本身定义了一种用于计算宇宙层级的语言，这对于防止悖论至关重要。
 
-Beyond functions, CoC provides powerful mechanisms for defining data structures from first principles using **inductive types**. An inductive type is defined by its constructors. For instance, \\( \text{Nat} \\) can be defined by its constructors \\( \text{Zero} : \text{Nat} \\) and \\( \text{Succ} : \text{Nat} \to \text{Nat} \\). The `Term::Constructor` variant represents a use of one of these builders. To use values of an inductive type, we need an elimination form, which is what the `Term::Match` construct provides. It allows for pattern matching, deconstructing a value to see which constructor was used to build it.
+除了函数，CoC 还提供了强大的机制，通过**归纳类型**从基本构造定义数据结构。归纳类型由其构造子定义。例如，\\( \text{Nat} \\) 可由其构造子 \\( \text{Zero} : \text{Nat} \\) 和 \\( \text{Succ} : \text{Nat} \to \text{Nat} \\) 定义。`Term::Constructor` 变体表示对这些构造子之一的使用。为了使用归纳类型的值，我们需要一种消去形式，这正是 `Term::Match` 构造所提供的。它允许模式匹配，即解构一个值以查看它是通过哪个构造子构建的。
 
-Finally, CoC includes **dependent pairs**, or **Sigma-types (`Σ`)**, which are the counterpart to Pi-types. A Sigma-type, written \\( \Sigma x : A . B \\), represents a pair where the type of the second element (\\( B \\)) can depend on the value of the first element (\\( x \\)). For example, \\( \Sigma n : \text{Nat} . \text{Vector}(\text{Int}, n) \\) is the type of a pair containing a number \\( n \\) and a vector of that specific length. Our AST captures this with `Term::Sigma`, and its inhabitants are created with `Term::Pair`, and deconstructed with `Term::Fst` and `Term::Snd`.
+最后，CoC 包含**依赖对**，或称 **Sigma 类型（`Σ`）**，它是 Pi 类型的对应。Sigma 类型写作 \\( \Sigma x : A . B \\)，表示一个对，其中第二个元素的类型（\\( B \\)）可以依赖于第一个元素的值（\\( x \\)）。例如，\\( \Sigma n : \text{Nat} . \text{Vector}(\text{Int}, n) \\) 是一个类型，它包含一个由数 \\( n \\) 和一个具有该特定长度的向量组成的对。我们的 AST 通过 `Term::Sigma` 捕获这一点，其居民通过 `Term::Pair` 创建，并通过 `Term::Fst` 和 `Term::Snd` 解构。
 
-The `Term` enum, therefore, describes a rich, unified language where programming and proving are two sides of the same coin. Terms like `Abs` and `App` handle computation, while `Pi`, `Sigma`, and `Sort` allow for expressing intricate logical properties. `Constructor` and `Match` give us the power to define our own data worlds.
+因此，`Term` 枚举描述了一种丰富且统一的语言，其中编程与证明是同一枚硬币的两面。像 `Abs` 和 `App` 这样的项处理计算，而 `Pi`、`Sigma` 和 `Sort` 则允许表达复杂的逻辑性质。`Constructor` 和 `Match` 赋予我们定义自己数据世界的能力。
 
-## Inductive Data Types
+## 归纳数据类型
 
-## Structures
+## 结构
 
-## Universe Polymorphism
+## 宇宙多态性

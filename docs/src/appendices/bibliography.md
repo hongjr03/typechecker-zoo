@@ -1,29 +1,29 @@
-# External References
+# 外部参考资料
 
-## Books
+## 书籍
 
-* Pierce, B. C. (2002). Types and programming languages. MIT press.
-* Pierce, B. C. (Ed.). (2024). Advanced topics in types and programming languages. MIT press.
-* Harper, R. (2016). Practical foundations for programming languages. Cambridge University Press.
-* Jones, R., Hosking, A., & Moss, E. (2023). The garbage collection handbook: the art of automatic memory management. Chapman and Hall/CRC.
+* Pierce, B. C. (2002). 《类型与编程语言》。MIT出版社。
+* Pierce, B. C. (编). (2024). 《类型与编程语言的高级专题》。MIT出版社。
+* Harper, R. (2016). 《编程语言的实践基础》。剑桥大学出版社。
+* Jones, R., Hosking, A., & Moss, E. (2023). 《垃圾回收手册：自动内存管理的艺术》。Chapman and Hall/CRC出版社。
 
-## Algorithm W
+## 算法W
 
-* Robin Milner. A Theory of Type Polymorphism in Programming. Journal of Computer and System Sciences, 1978.
-* Pottier, F., & Rémy, D. The Essence of ML Type Inference.
+* Robin Milner. 《编程中类型多态的理论》。《计算机与系统科学杂志》，1978年。
+* Pottier, F., & Rémy, D. 《ML类型推断的精髓》。
 
-## System F and System Fω
+## System F与System Fω
 
-* Jones, Mark P. "Typing haskell in haskell." Haskell workshop. Vol. 7. 1999.
-* Müller, M. (1998, August). Notes on HM (X).
-* Odersky, M., Sulzmann, M., & Wehr, M. (1999). Type inference with constrained types. Theory and practice of object systems, 5(1), 35-55.
-* Faxén, K. F. (2002). A static semantics for Haskell. Journal of functional programming, 12(4-5), 295-357.
-* Jinxu Zhao, Bruno C. d. S. Oliveira, and Tom Schrijvers. A Mechanical Formalization of Higher-Ranked Polymorphic Type Inference. ICFP 2019.
-* Jana Dunfield and Neelakantan R. Krishnaswami. Complete and Easy Bidirectional Typechecking for Higher-rank Polymorphism. ICFP 2013.
-* Jinxu Zhao and Bruno C. d. S. Oliveira. Elementary Type Inference. ECOOP 2022.
-* Roger Bosman, Georgios Karachalias, Tom Schrijvers. No Unification Variable Left Behind: Fully Grounding Type Inference for the HDM System. ITP 2023.
+* Jones, Mark P. "用Haskell给Haskell做类型检查。" Haskell研讨会论文集，第7卷，1999年。
+* Müller, M. (1998年8月). 《关于HM(X)的笔记》。
+* Odersky, M., Sulzmann, M., & Wehr, M. (1999). 《带约束类型的类型推断》。《对象系统的理论与实践》，5(1)，35-55页。
+* Faxén, K. F. (2002). 《Haskell的静态语义》。《函数式编程杂志》，12(4-5)，295-357页。
+* Jinxu Zhao, Bruno C. d. S. Oliveira, 与 Tom Schrijvers. 《高阶多态类型推断的机械化形式化》。ICFP 2019。
+* Jana Dunfield 与 Neelakantan R. Krishnaswami. 《高阶多态的完整且简单的双向类型检查》。ICFP 2013。
+* Jinxu Zhao 与 Bruno C. d. S. Oliveira. 《基础类型推断》。ECOOP 2022。
+* Roger Bosman, Georgios Karachalias, Tom Schrijvers. 《不留未解变量：为HDM系统实现完全接地类型推断》。ITP 2023。
 
-## Dependent Types
+## 依赖类型
 
-* Chris Bailey. Type Checking in Lean 4. https://ammkrn.github.io/type_checking_in_lean4/
-* Xu Xue and Bruno C. d. S. Oliveira. Contextual Typing. ICFP 2024.
+* Chris Bailey. 《在Lean 4中进行类型检查》。https://ammkrn.github.io/type_checking_in_lean4/
+* Xu Xue 与 Bruno C. d. S. Oliveira. 《上下文类型推断》。ICFP 2024。

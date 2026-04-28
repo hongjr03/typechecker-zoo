@@ -1,101 +1,101 @@
-# Examples
+# 示例
 
-Our Calculus of Constructions implementation demonstrates the full expressiveness of dependent type theory through comprehensive examples that span basic inductive types, higher-order polymorphic functions, universe polymorphism, implicit arguments, and dependent data structures. These examples showcase how the theoretical power of the Calculus of Constructions translates into practical programming language features.
+我们的构造演算实现通过涵盖基本归纳类型、高阶多态函数、宇宙多态性、隐式参数和依赖数据结构的综合示例，充分展示了依赖类型理论的表达能力。这些示例展示了构造演算的理论能力如何转化为实用的编程语言特性。
 
-Each example successfully type checks under our implementation, demonstrating the correctness of the constraint solving algorithms, universe system, and dependent type checker. The progression from simple types through complex dependent constructions illustrates how the Calculus of Constructions enables  programming patterns while maintaining logical consistency.
+每个示例均能在我们实现中成功通过类型检查，从而证明了约束求解算法、宇宙系统和依赖类型检查器的正确性。从简单类型到复杂依赖构造的渐进过程，说明了构造演算如何在保持逻辑一致性的同时支持各种编程模式。
 
-## Basic Inductive Types and Pattern Matching
+## 基本归纳类型与模式匹配
 
-The foundation of data structures in the Calculus of Constructions rests on inductive type definitions with constructor-based pattern matching:
+构造演算中数据结构的基础建立在基于构造子的模式匹配归纳类型定义之上：
 
 ```rust
 #![source_file!("coc/examples/pattern_matching_advanced.coc")]
 ```
 
-These basic examples demonstrate fundamental inductive types including natural numbers and booleans with their associated elimination functions. The `predecessor` function illustrates how pattern matching provides safe destructuring of inductive values, while the `not_bool` function shows simple enumeration-style pattern matching. The type checker ensures that all pattern cases are properly handled and that result types are consistent across branches.
+这些基础示例展示了包括自然数和布尔值在内的基本归纳类型及其相关的消去函数。`predecessor`函数说明了模式匹配如何提供对归纳值的安全解构，而`not_bool`函数则展示了简单的枚举式模式匹配。类型检查器确保所有模式分支得到妥善处理，且各分支的结果类型保持一致。
 
-## Higher-Order Polymorphic Functions
+## 高阶多态函数
 
-The Calculus of Constructions supports  polymorphic programming patterns through its dependent type system:
+构造演算通过其依赖类型系统支持多态编程模式：
 
 ```rust
 #![source_file!("coc/examples/final_demo.coc")]
 ```
 
-These examples showcase the interaction between inductive types, higher-order functions, and polymorphic composition. The `compose` function demonstrates parametric polymorphism over three type parameters, while `doTwice` and `doThrice` show how higher-order functions can abstract over computational patterns. The `square` function illustrates interaction with primitive operations, showing how user-defined types integrate with built-in arithmetic.
+这些示例展示了归纳类型、高阶函数与多态组合之间的交互。`compose`函数演示了涉及三个类型参数的参数多态性，而`doTwice`和`doThrice`则展示了高阶函数如何抽象计算模式。`square`函数说明了与基本操作的交互，展示了用户定义类型如何与内置算术运算集成。
 
-## Universe Polymorphism and Level Abstraction
+## 宇宙多态性与层级抽象
 
-Universe polymorphism enables definitions that work across the entire universe hierarchy, providing genuine genericity over type levels:
+宇宙多态性使得定义能够适用于整个宇宙层级，从而在类型层级上实现真正的泛型化：
 
 ```rust
 #![source_file!("coc/examples/universe_polymorphism.coc")]
 ```
 
-These examples demonstrate universe-polymorphic definitions that abstract over universe levels using explicit level parameters. The `id.{u}` function works at any universe level, while `const.{u,v}` shows polymorphism over multiple universe parameters. The inductive type `List.{u}` demonstrates universe-polymorphic data structures that can contain elements at arbitrary universe levels.
+这些示例展示了通过显式层级参数对宇宙层级进行抽象的宇宙多态定义。`id.{u}`函数可工作于任意宇宙层级，而`const.{u,v}`则展示了跨多个宇宙参数的泛型化。归纳类型`List.{u}`演示了可容纳任意宇宙层级元素的宇宙多态数据结构。
 
-The universe arithmetic expressions like `Sort (u+1)` show how the universe solver handles level arithmetic during type checking. Universe constraints ensure that polymorphic instantiations respect the universe hierarchy while enabling maximum flexibility in generic programming.
+像`Sort (u+1)`这样的宇宙算术表达式展示了宇宙求解器在类型检查过程中如何处理层级算术运算。宇宙约束确保多态实例化遵循宇宙层级，同时为泛型编程提供最大的灵活性。
 
-## Comprehensive Implicit Arguments
+## 全面隐式参数
 
-Implicit arguments provide syntactic convenience while maintaining the full expressiveness of dependent types:
+隐式参数在保持依赖类型完整表达能力的同时提供了语法上的便利：
 
 ```rust
 #![source_file!("coc/examples/implicit_comprehensive.coc")]
 ```
 
-This comprehensive example demonstrates the full range of implicit argument features. Simple functions like `id {A : Type}` show basic type inference, while complex functions like `double_map` demonstrate implicit argument propagation through nested polymorphic calls. The constraint solver automatically infers type arguments based on usage context, eliminating boilerplate while maintaining type safety.
+这个综合性示例展示了隐式参数的全部功能。像`id {A : Type}`这样的简单函数展示了基本的类型推断，而`double_map`这样的复杂函数则演示了隐式参数在嵌套多态调用中的传递。约束求解器根据使用上下文自动推断类型参数，在消除样板代码的同时保持类型安全。
 
-The `map` and `replicate` functions show how implicit arguments work with recursive functions and pattern matching. The constraint solver tracks type relationships across recursive calls, ensuring that implicit arguments are consistently instantiated throughout the computation.
+`map`和`replicate`函数展示了隐式参数如何与递归函数和模式配合工作。约束求解器跟踪递归调用间的类型关系，确保隐式参数在整个计算过程中被一致地实例化。
 
-## Dependent Data Structures
+## 依赖数据结构
 
-Dependent types enable data structures whose types encode computational properties, providing compile-time guarantees about program behavior:
+依赖类型使得数据结构能够在其类型中编码计算属性，从而在编译时提供程序行为保证：
 
 ```rust
 #![source_file!("coc/examples/dependent_vec.coc")]
 ```
 
-Length-indexed vectors represent the paradigmatic example of dependent data types. The `Vec A n` type carries its length `n` at the type level, enabling operations that are guaranteed to respect vector bounds at compile time. The `nil` constructor produces vectors of length zero, while `cons` extends vectors by exactly one element.
+长度索引向量代表了依赖数据类型的典型示例。`Vec A n`类型在类型层面携带其长度`n`，使得操作能够在编译时保证向量边界的正确性。`nil`构造子生成长度为零的向量，而`cons`则恰好将向量扩展一个元素。
 
-This example demonstrates how dependent types can encode invariants that would traditionally require runtime checking. The type system ensures that vector operations respect length constraints, eliminating entire classes of array bounds errors at compile time.
+此示例演示了依赖类型如何编码传统上需要运行时检查的不变式。类型系统确保向量操作遵循长度约束，从而在编译时消除了整类数组越界错误。
 
-## Structure Types and Record Operations
+## 结构类型与记录操作
 
-Structure types provide named field access and demonstrate the Calculus of Constructions' support for record-like data organization:
+结构类型提供命名字段访问，并展示了构造演算对类记录数据组织的支持：
 
 ```rust
 #![source_file!("coc/examples/structure_with_usage.coc")]
 ```
 
-The `Point` structure demonstrates basic record types with named fields. While full dot notation requires additional parser support, the example shows how structures integrate with the dependent type system. Structure types can participate in dependent constructions, enabling  data modeling patterns.
+`Point`结构演示了带有命名字段的基本记录类型。虽然完整的点记法需要额外的解析器支持，但该示例展示了结构类型如何与依赖类型系统集成。结构类型可以参与依赖构造，从而实现灵活的数据建模模式。
 
-## Polymorphic Function Composition
+## 多态函数组合
 
-Complex polymorphic programming demonstrates the interaction between higher-order functions, type inference, and constraint solving:
+复杂的泛型编程展示了高阶函数、类型推断和约束求解之间的交互：
 
 ```rust
 #![source_file!("coc/examples/polymorphic_functions.coc")]
 ```
 
-These examples show curried function definitions that demonstrate the lambda calculus foundations of the Calculus of Constructions. The `compose` function shows three-way type polymorphism, while `doTwice` demonstrates how polymorphic higher-order functions can abstract over computational patterns.
+这些示例展示了柯里化函数定义，说明了构造演算的λ演算基础。`compose`函数展示了三种类型的多态性，而`doTwice`则演示了泛型高阶函数如何抽象计算模式。
 
-## Working Examples with Type Inference
+## 带类型推断的工作示例
 
-Practical examples demonstrate how the constraint solver handles complex type inference scenarios:
+实践示例展示了约束求解器如何处理复杂的类型推断场景：
 
 ```rust
 #![source_file!("coc/examples/working_examples.coc")]
 ```
 
-These working examples demonstrate the type inference engine in action. The `constFunc` definition shows how the constraint solver handles nested lambda abstractions with polymorphic types. The `simple_function` illustrates type-level computation, where functions can manipulate types as first-class values.
+这些工作示例展示了类型推断引擎的实际运行。`constFunc`定义说明了约束求解器如何处理带有泛型类型的嵌套λ抽象。`simple_function`展示了类型级计算，其中函数可以操作类型作为一等值。
 
-## Advanced Dependent Programming
+## 高级依赖编程
 
-The most  examples demonstrate the full power of dependent types in practical programming scenarios:
+最先进的示例展示了依赖类型在实际编程场景中的全部能力：
 
 ```rust
 #![source_file!("coc/examples/dependent.coc")]
 ```
 
-These examples show how dependent types enable programs where types can depend on term values. The `id` function with explicit type parameters demonstrates how dependent functions can be polymorphic over both types and their computational properties.
+这些示例展示了依赖类型如何使程序中的类型可以依赖于项值。带有显式类型参数的`id`函数演示了依赖函数如何能够同时在类型及其计算属性上实现多态性。

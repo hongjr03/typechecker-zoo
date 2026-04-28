@@ -1,23 +1,23 @@
-# Lexer and Parser
+# 词法分析器与解析器
 
-Our System Fω implementation employs a carefully designed parsing strategy that contrasts sharply with the organically evolved complexity found in production Haskell implementations. While Haskell's grammar has grown over decades through endless language extensions and "pragmatic" compromises, resulting in context-dependent parsing, whitespace sensitivity, and intricate layout rules with virtual braces and semicolons, and a general clusterf*** our implementation opts for a much smaller surface langauge.
+我们的 System Fω 实现采用了一种精心设计的解析策略，这与生产级 Haskell 实现中那种有机演化而来的复杂性形成了鲜明对比。Haskell 的语法历经数十年，通过无休止的语言扩展和“实用主义”妥协不断膨胀，最终导致上下文相关的解析、对空白符的敏感、以及带有虚拟括号和分号的复杂布局规则——简直是一团乱麻。而我们的实现则选择了一个小得多的表层语言。
 
-The Haskell language specification presents significant parsing challenges that have led to numerous implementation variations across different compilers. The language's sensitivity to indentation creates a complex interaction between lexical analysis and parsing phases, where layout rules must insert implicit structure markers. Context-dependent syntax means that identical token sequences can parse differently depending on surrounding declarations, while the proliferation of language extensions has created a patchwork of parsing rules that interact in unexpected ways.
+Haskell 语言规范带来了巨大的解析挑战，导致不同编译器之间出现了众多实现变体。该语言对缩进的敏感性使得词法分析和解析阶段之间产生了复杂的交互，布局规则必须插入隐式的结构标记。上下文相关的语法意味着相同的记号序列可能因周围的声明而产生不同的解析结果，而语言扩展的激增则造就了以意想不到的方式相互作用的、拼凑而成的解析规则。
 
-Our toy System Fω implementation deliberately sidesteps these complexities by adopting explicit syntax with clear delimiters, enabling straightforward LALR(1) parsing that produces predictable results independent of context or whitespace variations.
+我们的玩具级 System Fω 实现刻意回避了这些复杂性，采用了带有明确分隔符的显式语法，从而实现了直接的 LALR(1) 解析，能够产生与上下文或空白符变化无关的可预测结果。
 
-## Lexical Analysis Strategy
+## 词法分析策略
 
-The lexical analysis phase transforms source text into a stream of tokens that the parser can process deterministically. Unlike Haskell's context-sensitive lexer that must track indentation levels and insert layout tokens, our lexer operates as a pure finite state machine.
+词法分析阶段将源代码转换为解析器可以确定性地处理的记号流。与 Haskell 那必须跟踪缩进级别并插入布局记号的上下文相关词法分析器不同，我们的词法分析器以纯粹的有限状态机方式运行。
 
 ```rust
 #![enum!("system-f-omega/src/lexer.rs", Token)]
 ```
 
-The lexer recognizes several categories of tokens that capture the essential elements of our surface language. Keywords like `data`, `match`, and `forall` establish the syntactic framework for declarations and expressions. Identifiers distinguish between type variables, term variables, and constructor names through naming conventions that the lexer enforces consistently.
+词法分析器识别出几类记号，它们捕捉了我们表层语言的基本元素。像 `data`、`match` 和 `forall` 这样的关键字为声明和表达式建立了语法框架。标识符通过词法分析器一致执行的命名约定来区分类型变量、项变量和构造器名称。
 
-Operators receive special treatment to handle the function arrow (`->`) and type signature marker (`::`), both crucial for expressing types and function signatures. Delimiters including parentheses, braces, and semicolons provide explicit structure that eliminates the ambiguity inherent in layout-based syntax.
+运算符得到特殊处理，以处理函数箭头 (`->`) 和类型签名标记 (`::`)，这两者对于表达类型和函数签名至关重要。包括圆括号、花括号和分号在内的分隔符提供了显式的结构，消除了基于布局的语法所固有的歧义。
 
-Numeric and boolean literals complete the token vocabulary, providing the primitive values that serve as the foundation for more complex expressions.
+数值和布尔字面量构成了记号词汇表的其余部分，提供了作为更复杂表达式基础的原语值。
 
-This is not ALL of Haskell, but it's enough to do non-trivial typechecking over. And that's all we really need. The full langauge is, to put it mildly, a bit too large and "organic".
+这并不是 Haskell 的全部，但足以进行非平凡的类型检查。而这正是我们所需要的一切。完整语言嘛，说得客气一点，有点过于庞大且“自然生长”了。

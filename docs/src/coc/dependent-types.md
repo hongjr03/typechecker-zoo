@@ -1,254 +1,252 @@
-# Dependent Types
+# 依赖类型
 
-Dependent types represent one of the most profound advances in type theory, fundamentally changing the relationship between computation and logic by allowing types to depend on the values they classify. This capability transforms types from static labels into dynamic specifications that can express precise mathematical properties and program invariants directly within the type system.
+依赖类型代表了类型理论中最深刻的进展之一，它从根本上改变了计算与逻辑之间的关系，允许类型依赖于它们所分类的值。这种能力将类型从静态标签转变为动态规范，能够直接在类型系统中表达精确的数学性质和程序不变量。
 
-The journey from simple types to dependent types mirrors the evolution from basic arithmetic to advanced mathematics. Just as mathematics progresses from counting discrete objects to expressing relationships between abstract structures, type systems evolve from classifying basic values to encoding complex logical propositions and computational specifications.
+从简单类型到依赖类型的历程，折射出从基础算术到高等数学的演变。正如数学从计数的离散对象发展到表达抽象结构之间的关系，类型系统也从对基本值的分类进化到编码复杂的逻辑命题和计算规范。
 
-## The Limitation of Simple Types
+## 简单类型的局限性
 
-Traditional type systems, even  ones like System Fω, maintain a fundamental separation between the computational world of terms and the classificatory world of types. Types serve as static labels that group values by their structural properties, enabling compile-time safety checks and optimization opportunities.
+传统的类型系统，甚至包括 System Fω 这样的系统，都保持着项的计算世界与类型的分类世界之间的根本分离。类型作为静态标签，根据结构性质对值进行分组，从而实现编译时安全检查并带来优化机会。
 
 ```haskell
--- Simple types classify values statically
+-- 简单类型静态地对值进行分类
 length : List a -> Int
-head : List a -> a  -- Partial function - what if the list is empty?
+head : List a -> a  -- 部分函数——如果列表为空怎么办？
 ```
 
-This separation creates a gap between what programmers know about their data and what the type system can express. A programmer might know that a particular list is non-empty, but the type system cannot capture this knowledge, forcing runtime checks that could theoretically be eliminated.
+这种分离在程序员对数据的了解与类型系统所能表达的内容之间造成了一道鸿沟。程序员可能知道某个列表非空，但类型系统无法捕获这一信息，从而迫使进行理论上本可消除的运行时检查。
 
-Simple types excel at preventing basic errors like applying functions to arguments of incompatible types, but they cannot express relationships between values or capture domain-specific invariants. The result is a tension between type safety and expressiveness that dependent types resolve by eliminating the artificial boundary between terms and types.
+简单类型在防止基本错误（如将函数应用于不兼容类型的参数）方面表现出色，但却无法表达值之间的关系或捕获特定领域的不变量。其结果是类型安全与表达力之间形成了张力，而依赖类型通过消除项与类型之间的人为界限解决了这一问题。
 
-## The Dependent Type Revolution
+## 依赖类型革命
 
-Dependent types dissolve the separation between computation and classification by allowing types to depend on computational values. This dependency enables types to express arbitrarily precise specifications about the values they classify, transforming the type system into a specification language capable of expressing mathematical theorems.
+依赖类型打破了计算与分类之间的分离，允许类型依赖于计算值。这种依赖性使类型能够对其所分类的值表达任意精确的规范，将类型系统转变为能够表达数学定理的规范语言。
 
-### Dependent Functions (Π-Types)
+### 依赖函数（Π-类型）
 
-The dependent product type `Π x : A. B` generalizes the familiar function arrow `A → B` by allowing the result type `B` to depend on the input value `x`. This dependency enables function types that specify not just the structure of inputs and outputs, but the precise relationship between them.
+依赖积类型 `Π x : A. B` 将常见的函数箭头 `A → B` 泛化，允许结果类型 `B` 依赖于输入值 `x`。这种依赖性使得函数类型不仅能指定输入和输出的结构，还能表达它们之间的精确关系。
 
 ```lean
--- Non-dependent function type
+-- 非依赖函数类型
 length : List A → Nat
 
--- Dependent function type
+-- 依赖函数类型
 vec : (n : Nat) → Type → Type
 create_vec : (n : Nat) → (A : Type) → vec n A
 
--- The return type depends on the input value
+-- 返回类型依赖于输入值
 safe_head : (n : Nat) → (A : Type) → (v : vec (n + 1) A) → A
 ```
 
-The `safe_head` function demonstrates the power of dependent types: by requiring that the vector length be `n + 1` rather than just any natural number, the type system guarantees that the vector is non-empty, eliminating the possibility of runtime failures when extracting the head element.
+`safe_head` 函数展示了依赖类型的威力：通过要求向量长度为 `n + 1` 而非任意自然数，类型系统保证了向量非空，从而消除了提取头部元素时出现运行时错误的可能性。
 
-### Dependent Pairs (Σ-Types)
+### 依赖对（Σ-类型）
 
-The dependent sum type `Σ x : A. B` represents pairs where the type of the second component depends on the value of the first component. This construct enables existential quantification and the creation of data structures that maintain precise relationships between their components.
+依赖和类型 `Σ x : A. B` 表示这样的对：第二个分量的类型依赖于第一个分量的值。这一构造能够表达存在量化，以及创建在其分量之间保持精确关系的数据结构。
 
 ```lean
--- Simple pair type
+-- 简单对类型
 Pair A B : Type := A × B
 
--- Dependent pair type
+-- 依赖对类型
 DPair A B : Type := Σ x : A. B x
 
--- Concrete example: a vector with its length
+-- 具体例子：携带长度的向量
 sized_vec : Type := Σ n : Nat. vec n Int
 
--- Pattern matching preserves dependencies
+-- 模式匹配保持依赖关系
 process_sized : sized_vec → Int
-process_sized ⟨n, v⟩ = sum_vec v  -- Type checker knows v has length n
+process_sized ⟨n, v⟩ = sum_vec v  -- 类型检查器知道 v 的长度为 n
 ```
 
-Dependent pairs enable the expression of existential statements within the type system. Rather than asserting "there exists a natural number n such that property P holds," we can construct a concrete witness that demonstrates the existence while providing computational access to both the witness and the proof of the property.
+依赖对使得能够在类型系统内部表达存在性陈述。我们不再需要断言“存在自然数 n 使得性质 P 成立”，而是可以构造一个具体的见证，既证明存在性，又同时提供对该见证及性质证明的计算访问。
 
-## Dependent Types as Specifications
+## 依赖类型作为规范
 
-The true power of dependent types emerges when we recognize that they function as executable specifications. Unlike traditional specifications written in separate specification languages, dependent types are integrated into the programming language itself, enabling specifications that are checked automatically by the type system.
+依赖类型的真正威力在于我们认识到它们可作为可执行的规范。与用单独的规范语言编写的传统规范不同，依赖类型被整合到编程语言本身之中，使得规范能够由类型系统自动检查。
 
-### Precise Array Bounds
+### 精确的数组边界
 
-Traditional array operations require runtime bounds checking to ensure memory safety. Dependent types enable compile-time verification of array bounds, eliminating both the runtime overhead and the possibility of bounds violations.
+传统的数组操作需要运行时边界检查来确保内存安全。依赖类型使得数组边界的编译时验证成为可能，既消除了运行时开销，也消除了越界违规的可能性。
 
 ```lean
--- Array type indexed by its length
+-- 由长度索引的数组类型
 Array : Nat → Type → Type
 
--- Bounds-safe array indexing
+-- 边界安全的数组索引
 get : (n : Nat) → (A : Type) → Array n A → (i : Nat) → i < n → A
 
--- Usage requires proof that index is in bounds
+-- 使用需要索引在范围内的证明
 example_access : Array 5 Int → Int
-example_access arr = get 5 Int arr 2 (by norm_num)  -- Proof that 2 < 5
+example_access arr = get 5 Int arr 2 (by norm_num)  -- 证明 2 < 5
 ```
 
-The type system now captures the relationship between array size and valid indices, transforming a runtime safety property into a compile-time guarantee. Programs that would cause array bounds violations become syntactically ill-formed, preventing an entire class of common programming errors.
+类型系统现在捕获了数组大小与有效索引之间的关系，将运行时安全属性转化为编译时保证。会导致数组越界的程序在语法上变得不合法，从而防止了一整类常见编程错误。
 
-### Correctness Conditions
+### 正确性条件
 
-Dependent types can express  correctness conditions that ensure algorithms satisfy their intended properties. A sorting function can be specified to produce a result that is both a permutation of its input and satisfies the sorted property.
+依赖类型可以表达确保算法满足其预期性质的条件。排序函数可以被指定为产生一个既是其输入的排列且满足有序性质的结果。
 
 ```lean
--- Specification of sorted lists
+-- 有序列表的规范
 Sorted : List Nat → Prop
 
--- Specification of permutations
+-- 排列的规范
 Permutation : List A → List A → Prop
 
--- Type of correct sorting functions
+-- 正确排序函数的类型
 sort : (l : List Nat) → {l' : List Nat // Sorted l' ∧ Permutation l l'}
 ```
 
-This specification transforms the informal notion of "correct sorting" into a precise mathematical statement that the type system can verify. Implementations that fail to maintain the required properties will be rejected at compile time, providing strong correctness guarantees.
+这一规范将“正确排序”的非正式概念转化为精确的数学语句，类型系统可以对其加以验证。未能维持所需性质的实现将在编译时被拒绝，从而提供强有力的正确性保证。
 
-## The Curry-Howard Correspondence in Practice
+## Curry-Howard 对应在实践中的应用
 
-Dependent types realize the Curry-Howard correspondence in a practical programming context. The correspondence establishes a deep connection between logical propositions and types, between mathematical proofs and programs, and between proof verification and type checking.
+依赖类型在实用的编程环境中实现了 Curry-Howard 对应。该对应建立了逻辑命题与类型、数学证明与程序、以及证明验证与类型检查之间的深刻联系。
 
-### Propositions as Types
+### 命题即类型
 
-Every mathematical proposition corresponds to a type in the dependent type system. The proposition "for all natural numbers n, n + 0 = n" becomes the type `∀n : Nat, n + 0 = n`, where equality is represented as a type family that is inhabited precisely when its arguments are equal.
+每个数学命题都对应于依赖类型系统中的一个类型。命题“对所有自然数 n，n + 0 = n”变成了类型 `∀n : Nat, n + 0 = n`，其中相等性被表示为一个类型族，该族恰好在其参数相等时才有实例。
 
 ```lean
--- Mathematical proposition as a type
+-- 数学命题作为类型
 zero_right_identity : ∀n : Nat, n + 0 = n
+```
 
--- Constructive proof as a program
+-- 作为程序的构造性证明
 zero_right_identity = fun n =>
   Nat.rec
-    (Eq.refl 0)                    -- Base case: 0 + 0 = 0
-    (fun k ih => congrArg succ ih) -- Inductive step: (k+1) + 0 = k+1
+    (Eq.refl 0)                    -- 基础情形：0 + 0 = 0
+    (fun k ih => congrArg succ ih) -- 归纳步骤：(k+1) + 0 = k+1
 ```
 
-The proof term demonstrates the proposition by providing a computational witness. The type checker verifies that this witness actually establishes the claimed proposition, ensuring that only valid proofs are accepted.
+该证明项通过提供一个计算见证来演示命题。类型检查器验证该见证确实确立了所声明的命题，从而确保只有有效的证明被接受。
 
-### Programs as Proofs
+### 程序即证明
 
-Conversely, every constructive proof corresponds to a program that computes evidence for the proven proposition. Complex mathematical theorems become  programs that construct witnesses through computation.
+反之，每个构造性证明都对应于一个程序，该程序为被证明的命题计算证据。复杂的数学定理成为通过计算构造见证的程序。
 
 ```lean
--- Theorem: Every list has a decidable equality test
+-- 定理：每个列表都具有可判定的相等性测试
 list_eq_decidable : (A : Type) → [DecidableEq A] → DecidableEq (List A)
 list_eq_decidable A inst =
-  -- Construction of decidable equality procedure for lists
-  -- This is both a proof of decidability and an algorithm for testing equality
+  -- 构造列表的可判定相等性过程
+  -- 这既是一个关于可判定性的证明，也是一个用于测试相等性的算法
 ```
 
-The program serves dual roles: it provides algorithmic content that can be executed computationally, and it serves as a proof that establishes the mathematical property. This duality eliminates the gap between specification and implementation.
+该程序扮演双重角色：它提供了可被计算执行算法内容，同时也作为确立数学性质的证明。这种双重性消除了规约与实现之间的鸿沟。
 
-## Challenges and Solutions in Dependent Types
+## 依赖类型中的挑战与解决方案
 
-The expressive power of dependent types introduces new challenges that require  solutions. The integration of computation with specification creates complexities that simpler type systems avoid.
+依赖类型的表达能力引入了新的挑战，需要相应的解决方案。计算与规约的集成带来了更简单类型系统所避免的复杂性。
 
-### Definitional Equality
+### 定义性相等
 
-In dependent type systems, type checking requires determining when two types are equal. However, since types can contain computational content, type equality becomes computational equivalence, which is generally undecidable.
+在依赖类型系统中，类型检查需要判断两个类型何时相等。然而，由于类型可以包含计算内容，类型相等变为计算等价，而这通常是不可判定的。
 
-Practical dependent type systems address this challenge by defining **definitional equality** as equality modulo certain computational rules. Two types are considered definitionally equal if they normalize to identical forms under β-reduction, η-expansion, and other definitional reductions.
+实用的依赖类型系统通过将**定义性相等**定义为模特定计算规则下的相等来应对这一挑战。如果两个类型在 β-归约、η-展开及其他定义性归约下归一化为相同形式，则它们被称为定义性相等。
 
 ```lean
--- These types are definitionally equal
+-- 这些类型是定义性相等的
 Vector (2 + 3) Int  ≡  Vector 5 Int
 
--- Because (2 + 3) normalizes to 5
+-- 因为 (2 + 3) 归一化为 5
 ```
 
-This approach maintains decidability by restricting definitional equality to normalizing computations while providing sufficient flexibility for practical programming patterns.
+这种方法通过将定义性相等限制在可归一化的计算上，同时为实用编程模式提供足够的灵活性，从而维持了可判定性。
 
-### Universe Hierarchy
+### 宇宙层级
 
-The power to construct types that depend on arbitrary values raises logical consistency concerns. If types can contain values and values can be types, what prevents the construction of paradoxical self-referential types?
+构造依赖于任意值的类型的能力引发了逻辑一致性方面的担忧。如果类型可以包含值，值又可以是类型，那么什么能阻止矛盾的自指类型的构造？
 
-Dependent type systems maintain consistency through **universe stratification**, where types are organized into a hierarchy of universes with strict inclusion relationships. Each universe contains types of bounded complexity, preventing the construction of impredicative types that would lead to logical paradoxes.
+依赖类型系统通过**宇宙分层**来维持一致性，其中类型被组织成一个具有严格包含关系的宇宙层级。每个宇宙包含有界复杂度的类型，从而防止了会导致逻辑悖论的非直谓类型的构造。
 
-#### Mathematical Formulation
+#### 数学形式化
 
-The universe hierarchy can be precisely formulated as an infinite sequence of universes with inclusion relationships:
+宇宙层级可以精确地形式化为一个具有包含关系的无限宇宙序列：
 
 \\[\mathcal{U}\_0 \subseteq \mathcal{U}\_1 \subseteq \mathcal{U}\_2 \subseteq \cdots \subseteq \mathcal{U}_\omega\\]
 
-Each universe \\(\mathcal{U}_i\\) serves as the domain for types at level \\(i\\), while \\(\text{Type}_i\\) denotes the type of types in universe \\(\mathcal{U}\_i\\). The fundamental typing rules establish the hierarchy:
+每个宇宙 \\(\mathcal{U}_i\\) 作为层级 \\(i\\) 的类型的论域，而 \\(\text{Type}_i\\) 表示宇宙 \\(\mathcal{U}\_i\\) 中的类型之类型。基本的类型规则建立了该层级：
 
-\\[\frac{A : \text{Type}\_i}{\text{Type}\_i : \text{Type}_{i+1}} \quad \text{(Universe Formation)}\\]
+\\[\frac{A : \text{Type}\_i}{\text{Type}\_i : \text{Type}_{i+1}} \quad \text{(宇宙形成)}\\]
 
-\\[\frac{A : \text{Type}_i \quad i \leq j}{A : \text{Type}_j} \quad \text{(Cumulativity)}\\]
+\\[\frac{A : \text{Type}_i \quad i \leq j}{A : \text{Type}_j} \quad \text{(累积性)}\\]
 
-The cumulativity rule enables types to be lifted to higher universes, providing flexibility while maintaining the strict stratification needed for consistency.
+累积性规则使得类型可以被提升到更高的宇宙，提供了灵活性，同时维持了一致性所需的严格分层。
 
-#### Type Formation Rules
+#### 类型形成规则
 
-The universe hierarchy governs how types can be formed at each level. Basic types inhabit universe \\(\mathcal{U}_0\\):
+宇宙层级规定了在每个层级上类型如何形成。基本类型存在于宇宙 \\(\mathcal{U}_0\\) 中：
 
 \\[\text{Nat} : \text{Type}_0 \qquad \text{Bool} : \text{Type}_0\\]
 
-Type constructors must respect universe levels. For dependent function types, the result universe is the maximum of the argument and result universes:
+类型构造器必须尊重宇宙层级。对于依赖函数类型，结果宇宙是参数宇宙与结果宇宙的最大值：
 
-\\[\frac{\Gamma \vdash A : \text{Type}\_i \quad \Gamma, x : A \vdash B : \text{Type}\_j}{\Gamma \vdash \Pi x : A. B : \text{Type}_{\max(i,j)}} \quad \text{(Pi Formation)}\\]
+\\[\frac{\Gamma \vdash A : \text{Type}\_i \quad \Gamma, x : A \vdash B : \text{Type}\_j}{\Gamma \vdash \Pi x : A. B : \text{Type}_{\max(i,j)}} \quad \text{(Π 形成)}\\]
 
-For inductive types, the universe level is determined by the constructors' argument types:
+对于归纳类型，宇宙层级由构造器的参数类型决定：
 
-\\[\frac{\text{each constructor } c_k \text{ has type } \Pi \overrightarrow{x} : \overrightarrow{A}. T \quad \max(\text{levels}(\overrightarrow{A})) \leq i}{\text{inductive } T : \text{Type}_i} \quad \text{(Inductive Formation)}\\]
+\\[\frac{\text{每个构造器 } c_k \text{ 的类型为 } \Pi \overrightarrow{x} : \overrightarrow{A}. T \quad \max(\text{levels}(\overrightarrow{A})) \leq i}{\text{归纳类型 } T : \text{Type}_i} \quad \text{(归纳类型形成)}\\]
 
-#### Predicativity and Consistency
+#### 直谓性与一致性
 
-The universe hierarchy ensures **predicativity**, meaning that type constructors at level \\(i\\) can only quantify over types at levels strictly less than \\(i\\). This restriction prevents Russell-style paradoxes:
+宇宙层级确保了**直谓性**，这意味着层级 \\(i\\) 的类型构造器只能量化严格低于层级 \\(i\\) 的类型。这一限制阻止了罗素式悖论：
 
-\\[\frac{\Gamma \vdash A : \text{Type}_i \quad \Gamma, x : A \vdash B : \text{Type}\_j \quad j < i}{\Gamma \vdash \Pi x : A. B : \text{Type}_i} \quad \text{(Predicative Pi)}\\]
+\\[\frac{\Gamma \vdash A : \text{Type}_i \quad \Gamma, x : A \vdash B : \text{Type}\_j \quad j < i}{\Gamma \vdash \Pi x : A. B : \text{Type}_i} \quad \text{(直谓 Π)}\\]
 
-Without this restriction, we could construct the type of all types that do not contain themselves, leading to contradiction. The predicativity constraint ensures that self-reference is impossible within the type system.
+没有这一限制，我们可以构造“所有不包含自身类型的类型”这一类型，从而导致矛盾。直谓性约束确保了类型系统内不可能出现自指。
 
-#### Universe Polymorphism
+#### 宇宙多态
 
-In our implemenetation we support **universe polymorphism**, allowing definitions to abstract over universe levels:
+在我们的实现中，我们支持**宇宙多态**，允许定义抽象于宇宙层级之上：
 
 \\[\text{id} : \Pi u : \text{Level}. \Pi A : \text{Type}_u. A \to A\\]
 
-Universe level variables enable generic programming across the entire universe hierarchy:
+宇宙层级变量使得可以在整个宇宙层级上进行泛型编程：
 
-\\[\frac{\Gamma \vdash e : \Pi u : \text{Level}. T \quad \ell : \text{Level}}{\Gamma \vdash e[\ell] : T[u := \ell]} \quad \text{(Universe Application)}\\]
+\\[\frac{\Gamma \vdash e : \Pi u : \text{Level}. T \quad \ell : \text{Level}}{\Gamma \vdash e[\ell] : T[u := \ell]} \quad \text{(宇宙实例化)}\\]
 
-#### Universe Arithmetic
+#### 宇宙算术
 
-Universe polymorphism often requires arithmetic operations on universe levels. We support the following operations:
+宇宙多态常常需要对宇宙层级进行算术运算。我们支持以下运算：
 
-* **Successor**: \\(u + 1\\) represents the universe immediately above level \\(u\\)
-* **Maximum**: \\(\max(u, v)\\) represents the least universe containing both \\(u\\) and \\(v\\)
-* **Addition**: \\(u + n\\) represents the universe \\(n\\) levels above \\(u\\)
+* **后继**：\\(u + 1\\) 表示层级 \\(u\\) 正上方的宇宙
+* **最大值**：\\(\max(u, v)\\) 表示同时包含 \\(u\\) 和 \\(v\\) 的最小宇宙
+* **加法**：\\(u + n\\) 表示层级 \\(u\\) 向上 \\(n\\) 层的宇宙
 
-Which have the following properties:
+这些运算具有以下性质：
 
-\\[\max(u, v) = \max(v, u) \quad \text{(Symmetry)}\\]
-\\[\max(u, \max(v, w)) = \max(\max(u, v), w) \quad \text{(Associativity)}\\]
-\\[(u + m) + n = u + (m + n) \quad \text{(Addition Associativity)}\\]
+\\[\max(u, v) = \max(v, u) \quad \text{(对称性)}\\]
+\\[\max(u, \max(v, w)) = \max(\max(u, v), w) \quad \text{(结合性)}\\]
+\\[(u + m) + n = u + (m + n) \quad \text{(加法结合性)}\\]
 
-#### Consistency and Normalization
+#### 一致性与正规化
 
-The universe hierarchy ensures several crucial properties for dependent type systems:
+宇宙层级确保了依赖类型系统的几个关键性质：
 
-**Strong Normalization**: Every well-typed term has a finite normal form, ensuring that type checking terminates.
+**强正规化**：每个良类型的项都具有有限的正规形式，确保类型检查终止。
 
-**Logical Consistency**: The system admits no proof of false, maintaining its utility as a logical foundation.
+**逻辑一致性**：系统中不存在假的证明，维持其作为逻辑基础的有用性。
 
-**Decidable Type Checking**: The combination of strong normalization and definitional equality makes type checking decidable.
+**可判定的类型检查**：强正规化与定义性相等的结合使得类型检查可判定。
 
-The formal treatment of universes requires careful attention to:
+对宇宙的形式化处理需要仔细注意：
 
-1. **Universe Level Inference**: Automatically determining appropriate universe levels for polymorphic definitions
-2. **Constraint Solving**: Resolving systems of universe level constraints that arise during type checking
-3. **Cumulative Subtyping**: Implementing the coercion of types to higher universes efficiently
+1. **宇宙层级推断**：自动确定多态定义中合适的宇宙层级
+2. **约束求解**：解析在类型检查过程中产生的宇宙层级约束系统
+3. **累积子类型**：高效实现类型到更高宇宙的强制转换
 
-#### Implementation in the Calculus of Constructions
+#### 在构造演算中的实现
 
-We adopt the following naming convention for type universes:
+我们采用以下命名约定来表示类型宇宙：
 
-* **Prop** - The universe of propositions, containing logical statements that may or may not have computational content
+* **Prop**——命题宇宙，包含可能具有或可能不具有计算内容的逻辑陈述
+* **Type**——类型宇宙（等同于Type 0），包含普通数据类型，如自然数和列表
+* **Type u**——级别为u的宇宙，其中u是一个宇宙级别变量
+* **Sort u**——级别为u的通用宇宙，可以表示Prop（当u=0时）或Type u（当u>0时）
 
-* **Type** - The universe of types (equivalent to Type 0), containing ordinary data types like natural numbers and lists
-
-* **Type u** - A universe at level u, where u is a universe level variable
-
-* **Sort u** - A general universe at level u that can represent either Prop (when u = 0) or Type u (when u > 0)
-
-The key principle is that a universe at level \\(u\\) can only classify types that are at levels lower than \\(u\\). This creates a hierarchy that prevents logical paradoxes while enabling expressive type-level programming.
+关键原则是：级别为\\(u\\)的宇宙只能对级别低于\\(u\\)的类型进行分类。这创建了一个层级结构，既能防止逻辑悖论，又能支持富有表现力的类型级编程。
 
 ```lean
 -- Basic types live in Type (= Type 0)
@@ -279,9 +277,9 @@ inductive Eq.{u} {A : Sort u} (a : A) : A → Prop where
 def identity.{u} {A : Sort u} (x : A) : A := x
 ```
 
-### Type Inference and Elaboration
+### 类型推断与阐述
 
-The expressiveness of dependent types creates challenges for type inference, as the system must often infer not just types but also proof terms and computational content. Modern dependent type systems employ  **elaboration** processes that insert implicit arguments, resolve type class instances, and construct proof terms automatically.
+依赖类型的表现力给类型推断带来了挑战，因为系统通常不仅要推断类型，还要推断证明项和计算内容。现代依赖类型系统采用**阐述**（elaboration）过程，自动插入隐式参数、解析类型类实例，并构造证明项。
 
 ```lean
 -- Surface syntax with implicit arguments
@@ -294,4 +292,4 @@ map : (A : Type) → (B : Type) → (A → B) → List A → List B
 result = map succ [1, 2, 3]  -- Elaborates to: map Nat Nat succ [1, 2, 3]
 ```
 
-The elaboration process bridges the gap between the concise syntax that programmers want to write and the fully explicit form that the type checker requires for verification.
+阐述过程弥合了程序员想要编写的简洁语法与类型检查器验证所需的完全显式形式之间的鸿沟。

@@ -1,76 +1,76 @@
-# Universe Polymorphism
+# 宇宙多态
 
-Universe polymorphism enables definitions to abstract over universe levels, creating truly generic constructions that work across the entire universe hierarchy. Our implementation includes a dedicated universe constraint solver that handles the complex arithmetic and constraint relationships that arise in polymorphic universe contexts.
+宇宙多态使定义能够抽象化宇宙层级，从而创建出可在整个宇宙层级体系中工作的真正通用构造。我们的实现包含一个专用的宇宙约束求解器，可处理多态宇宙上下文中出现的复杂算术和约束关系。
 
-## Universe Constraint Solver
+## 宇宙约束求解器
 
 ```rust
 #![struct!("coc/src/universe_solver.rs", UniverseSolver)]
 ```
 
-The `UniverseSolver` manages universe-level constraints independently from the main constraint solver, enabling specialized algorithms for universe arithmetic and level unification. This separation allows for efficient handling of universe polymorphism without complicating the main type checking algorithms.
+`UniverseSolver` 独立于主约束求解器管理宇宙层级约束，从而能够针对宇宙算术和层级合一使用专用算法。这种分离使得高效处理宇宙多态成为可能，同时避免复杂化主要类型检查算法。
 
-### Universe Constraint Types
+### 宇宙约束类型
 
-Universe constraints capture the relationships between universe levels that must be maintained for logical consistency:
+宇宙约束捕捉了宇宙层级之间必须保持的逻辑一致性关系：
 
 ```rust
 #![enum!("coc/src/ast.rs", UniverseConstraint)]
 ```
 
-The constraint system handles two fundamental relationships:
+约束系统处理两种基本关系：
 
-**Equality Constraints** (`Equal`) require two universe levels to be identical, arising from type equality requirements in dependent contexts where universe levels must match exactly.
+**相等约束**（`Equal`）要求两个宇宙层级完全相同，这源于依赖上下文中类型相等性的要求，其中宇宙层级必须精确匹配。
 
-**Ordering Constraints** (`LessEq`) ensure that one universe level is less than or equal to another, maintaining the predicativity requirements that prevent logical paradoxes.
+**排序约束**（`LessEq`）确保一个宇宙层级小于或等于另一个，从而维护防止逻辑悖论的可预测性要求。
 
-### Universe Constraint Solving
+### 宇宙约束求解
 
 ```rust
 #![function!("coc/src/universe_solver.rs", UniverseSolver::solve)]
 ```
 
-The main solving algorithm processes constraint lists through iterative constraint resolution, ensuring that all universe relationships are satisfied consistently:
+主求解算法通过迭代约束解析来处理约束列表，确保所有宇宙关系得到一致满足：
 
 ```rust
 #![function!("coc/src/universe_solver.rs", UniverseSolver::solve_constraint)]
 ```
 
-Individual constraint solving handles the different constraint types through specialized algorithms. Equality constraints use unification, while ordering constraints require more complex analysis to ensure the universe hierarchy remains consistent.
+单个约束求解通过专用算法处理不同类型的约束。相等约束使用合一，而排序约束需要更复杂的分析以确保宇宙层级体系保持一致。
 
-## Universe Unification Algorithm
+## 宇宙合一算法
 
 ```rust
 #![function!("coc/src/universe_solver.rs", UniverseSolver::unify_universes)]
 ```
 
-Universe unification demonstrates the complexity of working with universe-level arithmetic. The algorithm handles multiple universe expression forms:
+宇宙合一展示了处理宇宙层级算术的复杂性。该算法处理多种宇宙表达式形式：
 
-1. **Variable Unification**: When unifying a universe variable with any expression, we create a substitution mapping after performing occurs checking to prevent infinite universe expressions.
+1. **变量合一**：当将宇宙变量与任何表达式合一时，我们在执行发生检查以防止无限宇宙表达式后创建替换映射。
 
-2. **Constant Unification**: Universe constants can only unify with identical constants, ensuring that concrete levels like `Type 0` and `Type 1` remain distinct.
+2. **常量合一**：宇宙常量只能与相同的常量合一，确保 `Type 0` 和 `Type 1` 等具体层级保持区分。
 
-3. **Arithmetic Expressions**: Universe expressions like `u + 1` and `max(u, v)` require structural decomposition where we recursively unify the component universe expressions.
+3. **算术表达式**：像 `u + 1` 和 `max(u, v)` 这样的宇宙表达式需要结构分解，我们递归地合一其组成宇宙表达式。
 
-### Substitution and Normalization
+### 替换与标准化
 
 ```rust
 #![function!("coc/src/universe_solver.rs", UniverseSolver::apply_substitution)]
 ```
 
-Universe substitution application demonstrates the recursive nature of universe expressions. When substituting into compound expressions like `Add` or `Max`, we must recursively apply substitutions to all subcomponents while maintaining the arithmetic structure.
+宇宙替换应用展示了宇宙表达式的递归特性。当将替换应用于像 `Add` 或 `Max` 这样的复合表达式时，我们必须递归地将替换应用到所有子组件，同时保持算术结构。
 
-### Occurs Check for Universe Variables
+### 宇宙变量的发生检查
 
 ```rust
 #![function!("coc/src/universe_solver.rs", UniverseSolver::occurs_check)]
 ```
 
-The occurs check prevents infinite universe expressions by ensuring that universe variables don't appear within their own solutions. This check must traverse the entire structure of universe expressions, including arithmetic operations and maximum expressions.
+发生检查通过确保宇宙变量不出现在其自身解中，防止产生无限宇宙表达式。该检查必须遍历宇宙表达式的整个结构，包括算术运算和最大值表达式。
 
-## Universe Expression Normalization
+## 宇宙表达式标准化
 
-The universe solver includes normalization capabilities that simplify universe expressions to canonical forms:
+宇宙求解器包含标准化功能，可将宇宙表达式简化为规范形式：
 
 ```rust
 match u {
@@ -93,79 +93,80 @@ match u {
 }
 ```
 
-This normalization process:
-- **Arithmetic Simplification**: Combines constants in addition expressions like `Const(2) + 3` becoming `Const(5)`
-- **Maximum Computation**: Evaluates maximum expressions between constants
-- **Canonical Forms**: Maintains normalized expressions that improve unification success
+此标准化过程：
 
-## Universe Polymorphic Definitions
+- **算术简化**：合并加法表达式中的常量，例如 `Const(2) + 3` 变为 `Const(5)`
+- **最大值计算**：计算常量之间的最大值表达式
+- **规范形式**：维护标准化表达式，提高合一成功率
 
-Universe polymorphism enables definitions like:
+## 宇宙多态定义
+
+宇宙多态支持如下定义：
 
 ```lean
 def id.{u} (A : Sort u) (x : A) : A := x
 ```
 
-The `.{u}` syntax introduces a universe parameter that can be instantiated at different levels:
+`.{u}` 语法引入一个宇宙参数，可在不同层级实例化：
 
 ```lean
--- id instantiated at Type 0
+-- id 在 Type 0 实例化
 id_nat : Nat → Nat := id.{0} Nat
 
--- id instantiated at Type 1
+-- id 在 Type 1 实例化
 id_type : Type → Type := id.{1} Type
 ```
 
-### Fresh Variable Generation
+### 新鲜变量生成
 
 ```rust
 #![function!("coc/src/universe_solver.rs", UniverseSolver::fresh_universe_var)]
 ```
 
-Fresh universe variable generation ensures that each universe abstraction gets unique variable names, preventing conflicts in complex polymorphic definitions. The algorithm:
+新鲜宇宙变量生成确保每个宇宙抽象获得唯一变量名，防止复杂多态定义中的冲突。该算法：
 
-1. **Base Name Generation**: Starts with a descriptive base name
-2. **Conflict Avoidance**: Checks against existing variables and substitutions
-3. **Counter Extension**: Adds numeric suffixes when conflicts occur
-4. **Uniqueness Guarantee**: Ensures the returned name is globally unique
+1. **基本名称生成**：从描述性基本名称开始
+2. **冲突避免**：检查现有变量和替换
+3. **计数器扩展**：在冲突发生时添加数字后缀
+4. **唯一性保证**：确保返回的名称全局唯一
 
-### Substitution Management
+### 替换管理
 
 ```rust
 #![function!("coc/src/universe_solver.rs", UniverseSolver::get_substitution)]
 ```
 
-The solver provides access to resolved universe substitutions, enabling the main type checker to apply universe-level solutions throughout the type checking process.
+求解器提供对已解析宇宙替换的访问，使主类型检查器能在整个类型检查过程中应用宇宙级解。
 
 ```rust
 #![function!("coc/src/universe_solver.rs", UniverseSolver::substitute_universe)]
 ```
 
-Universe substitution application handles the complete resolution of universe expressions, recursively applying all accumulated substitutions to produce fully resolved universe levels.
+宇宙替换应用处理宇宙表达式的完整解析，递归应用所有累积的替换，生成完全解析的宇宙层级。
 
-## Integration with Type Checking
+## 与类型检查的集成
 
-The universe solver integrates with the main type checking algorithm at several points:
+宇宙求解器在多个点与主类型检查算法集成：
 
-**Type Formation**: When checking that types are well-formed, the universe solver ensures that universe level constraints are satisfied.
+**类型形成**：在检查类型是否良好形成时，宇宙求解器确保满足宇宙层级约束。
 
-**Polymorphic Instantiation**: When instantiating polymorphic definitions, the universe solver generates fresh universe variables and maintains constraints between them.
+**多态实例化**：在实例化多态定义时，宇宙求解器生成新鲜宇宙变量并维护它们之间的约束。
 
-**Definitional Equality**: When checking definitional equality between types with universe polymorphism, the universe solver ensures that universe relationships are preserved.
+**定义相等性**：在检查具有宇宙多态的类型之间的定义相等性时，宇宙求解器确保宇宙关系得到保持。
 
-### Constraint Satisfaction Checking
+### 约束满足检查
 
 ```rust
 #![function!("coc/src/universe_solver.rs", UniverseSolver::is_satisfiable)]
 ```
 
-The satisfiability checker enables the type checker to verify that universe constraint sets have solutions before committing to particular type assignments. This early checking prevents backtracking in complex type inference scenarios.
+可满足性检查器使类型检查器能够在提交特定类型赋值之前验证宇宙约束集是否有解。这种提前检查避免了复杂类型推理场景中的回溯。
 
-## Universe Polymorphism Examples
+## 宇宙多态示例
 
-Our implementation supports several forms of universe polymorphic definitions:
+我们的实现支持多种形式的宇宙多态定义：
 
-### Polymorphic Data Types
+### 多态数据类型
 
 ```lean
 structure Pair.{u, v} (A : Sort u) (B : Sort v) : Sort (max u v) :=
@@ -173,34 +174,34 @@ structure Pair.{u, v} (A : Sort u) (B : Sort v) : Sort (max u v) :=
   (snd : B)
 ```
 
-The `Pair` type is polymorphic over two universe levels, with the result type living at the maximum of the argument universe levels.
+`Pair` 类型在两个宇宙层级上是多态的，结果类型位于参数宇宙层级的最大值。
 
-### Polymorphic Functions
+### 多态函数
 
 ```lean
 def const.{u, v} (A : Sort u) (B : Sort v) (x : A) (y : B) : A := x
 ```
 
-The `const` function ignores its second argument and returns the first, working at any universe levels for both argument types.
+`const` 函数忽略第二个参数并返回第一个参数，在两个参数类型的任意宇宙层级上均可工作。
 
-### Universe Level Arithmetic
+### 宇宙层级运算
 
 ```lean
 def lift.{u} (A : Sort u) : Sort (u + 1) := A
 ```
 
-The `lift` operation moves a type from universe `u` to universe `u + 1`, demonstrating universe level arithmetic in type expressions.
+`lift` 操作将类型从宇宙 `u` 提升到宇宙 `u + 1`，演示了类型表达式中的宇宙层级运算。
 
-## Failure modes
+## 失败模式
 
-There are a couple of failure cases we handle with custom errors:
+我们处理了几种失败情况，并提供自定义错误：
 
 ```rust
 #![function!("coc/src/universe_solver.rs", UniverseSolver::universe_to_string)]
 ```
 
-The failures are categorized into three main types:
+这些失败分为三种主要类型：
 
-- **Unification Failures**: Show the specific universe levels that couldn't be unified
-- **Occurs Check Violations**: Identify infinite universe expressions
-- **Arithmetic Inconsistencies**: Point out invalid universe level arithmetic
+- **统一失败**：显示无法统一的特定宇宙层级
+- **出现检查违规**：识别出无限的宇宙表达式
+- **运算不一致**：指出无效的宇宙层级运算

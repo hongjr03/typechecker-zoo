@@ -1,17 +1,17 @@
-# The Lambda Calculus
+# Lambda 演算
 
-The **lambda calculus** is computation in its purest form. It is not an exaggeration to say that this elegant, tiny system is the theoretical bedrock of nearly every functional programming language, and its influence is felt across the entire landscape of computer science. Developed by Alonzo Church in the 1930s as a tool for studying the foundations of mathematics, it was later understood to be a universal model of computation. At its core, the lambda calculus is shockingly minimal; its syntax defines only three kinds of expressions, or "terms."
+**Lambda 演算**是以最纯粹形式呈现的计算模型。毫不夸张地说，这个优雅而微小的系统几乎是所有函数式编程语言的理论基石，其影响遍及计算机科学的整个领域。它由阿隆佐·邱奇在20世纪30年代作为研究数学基础的工具而提出，后来被发现是一种通用的计算模型。从本质上讲，Lambda 演算极其简洁；它的语法只定义了三种表达式（或称“项”）。
 
-Formally, we can define the syntax of the pure lambda calculus as follows:
+我们可以形式化地定义纯 Lambda 演算的语法如下：
 
 \\[ e ::= x \mid \lambda x . e \mid e_1 \ e_2 \\]
 
-Let's break this down:
-1.  **Variable (\\(x\\))**: A name that acts as a placeholder for a value.
-2.  **Abstraction (\\(\lambda x . e\\))**: This is an anonymous function definition. The \\(\lambda x\\) is the function's parameter, and the expression \\(e\\) is its body. The \\(\lambda\\) is read as "lambda."
-3.  **Application (\\(e_1 \ e_2\\))**: This is the act of calling a function. The expression \\(e_1\\) is the function, and \\(e_2\\) is the argument being passed to it.
+让我们分解一下：
+1. **变量（\\(x\\)）**：一个名称，作为值的占位符。
+2. **抽象（\\(\lambda x . e\\)）**：这是一个匿名函数定义。其中 \\(\lambda x\\) 是函数的参数，表达式 \\(e\\) 是函数体。\\(\lambda\\) 读作“Lambda”。
+3. **应用（\\(e_1 \ e_2\\)）**：这是调用函数的行为。表达式 \\(e_1\\) 是函数，\\(e_2\\) 是传递给它的参数。
 
-This formal definition maps almost directly onto a data structure in a language like Rust. We can represent these three core terms using an `enum`:
+这个形式化定义几乎可以直接映射到像 Rust 这样的语言中的数据结构。我们可以用一个 `enum` 来表示这三个核心项：
 
 ```rust
 pub enum Expr {
@@ -21,16 +21,16 @@ pub enum Expr {
 }
 ```
 
-Here, `Var(name)` corresponds to \\(x\\), `Abs(param, body)` corresponds to \\(\lambda x . e\\), and `App(function, argument)` corresponds to \\(e_1 \ e_2\\). The `Box` is a Rust detail that allows us to have recursive types of a known size.
+这里，`Var(name)` 对应于 \\(x\\)，`Abs(param, body)` 对应于 \\(\lambda x . e\\)，而 `App(function, argument)` 对应于 \\(e_1 \ e_2\\)。`Box` 是 Rust 的一个细节，它允许我们创建大小已知的递归类型。
 
-The power of the lambda calculus emerges from a few fundamental concepts. The first is **variable binding**. In an abstraction like \\(\lambda x . x + 1\\), the variable \\(x\\) is said to be **bound** within the body of the lambda. Any variable that is not bound by an enclosing lambda is a **free variable**. This distinction is critical for understanding scope. This leads directly to the idea of **alpha equivalence**, which states that the name of a bound variable is irrelevant. The function \\(\lambda x . x\\) is semantically identical to \\(\lambda y . y\\); both are the identity function. An implementation must be able to recognize this equivalence to correctly handle variable naming.
+Lambda 演算的力量源于几个基本概念。第一个是**变量绑定**。在形如 \\(\lambda x . x + 1\\) 的抽象中，变量 \\(x\\) 被称为在 Lambda 的函数体中被**绑定**。任何未被外层 Lambda 绑定的变量都是**自由变量**。这一区分对于理解作用域至关重要。由此直接引出**Alpha 等价**的概念，即绑定变量的名称无关紧要。函数 \\(\lambda x . x\\) 与 \\(\lambda y . y\\) 在语义上是相同的；两者都是恒等函数。一个实现必须能够识别这种等价性，从而正确处理变量命名。
 
-The second core concept is **beta reduction**, which is the computational engine of the lambda calculus. It formally defines how function application works. When an abstraction is applied to an argument, we reduce the expression by substituting the argument for every free occurrence of the bound variable within the function's body. For example, applying the function \\(\lambda x . x + 1\\) to the argument \\(5\\) is written as \\((\lambda x . x + 1) \ 5\\). The beta reduction rule tells us to replace \\(x\\) with \\(5\\) in the body \\(x + 1\\), yielding the result \\(5 + 1\\). This process of substitution is the fundamental mechanism of computation in this system. Implementations often avoid direct string substitution due to its complexity and risk of name collisions, instead using techniques like de Bruijn indices, which replace variable names with numbers representing their lexical distance to their binder.
+第二个核心概念是**Beta 规约**，它是 Lambda 演算的计算引擎。它形式化地定义了函数应用的工作方式。当一个抽象被应用到一个参数时，我们通过将参数替换到函数体中每个自由出现的绑定变量位置来规约表达式。例如，将函数 \\(\lambda x . x + 1\\) 应用于参数 \\(5\\)，写作 \\((\lambda x . x + 1) \ 5\\)。Beta 规约规则告诉我们在函数体 \\(x + 1\\) 中将 \\(x\\) 替换为 \\(5\\)，得到结果 \\(5 + 1\\)。这个替换过程是该系统计算的基本机制。由于直接字符串替换的复杂性和名称冲突的风险，许多实现会采用诸如 de Bruijn 索引等技术，这些技术将变量名替换为代表其到绑定器词法距离的数字。
 
-While the pure lambda calculus is Turing complete, it is also notoriously difficult to use directly for practical programming. For example, representing the number \\(3\\) requires a complex expression like \\(\lambda f . \lambda x . f (f (f x))\\). To make programming more convenient, we almost always extend the core calculus with additional expression types. These can include `let` bindings for local variables, literals for concrete values like numbers and strings, and data structures like tuples.
+虽然纯 Lambda 演算是图灵完备的，但直接用于实际编程却极为困难。例如，表示数字 \\(3\\) 需要一个像 \\(\lambda f . \lambda x . f (f (f x))\\) 这样复杂的表达式。为了让编程更方便，我们几乎总是用额外的表达式类型来扩展核心演算。这些可以包括用于局部变量的 `let` 绑定、用于具体值（如数字和字符串）的字面量，以及像元组这样的数据结构。
 
 ```rust
 #![enum!("algorithm-w/src/ast.rs", Expr)]
 ```
 
-This raises a crucial design question: should these new constructs be "wired in" as primitives with their own semantic rules, or should they be defined in terms of the pure calculus? This represents a fundamental tradeoff in language design. For example, a `let` expression, \\(\text{let } x = e_1 \text{ in } e_2\\), can be treated as **syntactic sugar** that desugars directly into a pure lambda calculus expression: \\((\lambda x . e_2) \ e_1\\). This approach keeps the core language minimal and elegant. The alternative is to make `let` a primitive construct. This means the type checker and evaluator must have specific logic to handle it. This "wired-in" approach often leads to better performance and more precise error messages, as the compiler has more specific knowledge about the construct's intent. However, it increases the complexity of the core system. Many languages strike a balance: fundamental and performance-critical features like numeric literals are often wired in, while higher-level patterns like `let` bindings might be treated as syntactic sugar, offering a convenient syntax that ultimately translates back to the foundational concepts of lambda, application, and variable.
+这引出一个关键的设计问题：这些新构造是应该作为拥有自身语义规则的“内建”原语，还是应该用纯演算来定义？这代表了语言设计中的一个基本权衡。例如，一个 `let` 表达式 \\(\text{let } x = e_1 \text{ in } e_2\\) 可以被视为**语法糖**，它直接脱糖为纯 Lambda 演算表达式：\\((\lambda x . e_2) \ e_1\\)。这种方法保持了核心语言的简洁与优雅。另一种选择是将 `let` 作为一个原语构造。这意味着类型检查器和求值器必须包含专门处理它的逻辑。这种“内建”方法通常能带来更好的性能和更精确的错误信息，因为编译器对该构造的意图有更具体的认知。然而，它会增加核心系统的复杂性。许多语言在两者之间取得平衡：像数值字面量这样基础且对性能敏感的特性通常被内建，而像 `let` 绑定这种更高级的模式则可能被视为语法糖，提供便利的语法，最终仍翻译回 Lambda、应用和变量这些基础概念。

@@ -1,66 +1,66 @@
 # System Fω
 
-System Fω stands as one of the most  type systems in the theoretical foundations of programming languages, combining parametric polymorphism with higher-kinded types to enable powerful abstraction mechanisms. This system forms the theoretical backbone for modern functional programming languages like Haskell and provides the expressive power needed for advanced programming patterns including functors, monads, and generic programming.
+System Fω 是编程语言理论基础中最强大的类型系统之一，它将参数多态与高阶类类型相结合，从而实现强大的抽象机制。该系统构成了 Haskell 等现代函数式编程语言的理论支柱，并为函子、单子及泛型编程等高级编程模式提供了所需的表达能力。
 
-To understand System Fω's significance, we must first examine its place within the broader landscape of type systems through the systematic classification known as the **lambda cube**.
+要理解 System Fω 的重要性，我们首先需要通过称为 **lambda 立方体** 的系统化分类，考察它在更广泛的类型系统图景中的位置。
 
-## The Lambda Cube
+## Lambda 立方体
 
-The lambda cube, introduced by Henk Barendregt, provides a systematic way to understand how different type systems relate to each other by considering three independent dimensions of abstraction. Each dimension of the cube corresponds to a different kind of dependency between terms and types, where "dependency" refers to the capacity of a term or type to bind a term or type.
+Henk Barendregt 提出的 lambda 立方体通过考虑三个独立的抽象维度，提供了一种系统化的方式来理解不同类型系统之间的关系。立方体的每个维度对应项与类型之间的一种不同依赖关系，其中“依赖”指的是项或类型绑定项或类型的能力。
 
-The three orthogonal axes of the lambda cube correspond to:
+lambda 立方体的三个正交轴对应如下：
 
-**\\(\to\\)-axis (Types depending on Terms)**: Enables dependent types where the structure of types can depend on the values of terms. This allows types like `Vector n` where the type carries information about term-level values.
+**→-轴（类型依赖于项）**：支持依赖类型，即类型的结构可以依赖于项的值。例如 `Vector n` 这样的类型，其携带了项级别的信息。
 
-**\\(\uparrow\\)-axis (Terms depending on Types)**: Enables polymorphism where terms can abstract over and depend on type parameters. This allows functions like `identity : ∀α. α \\to α` that work uniformly across all types.
+**↑-轴（项依赖于类型）**：支持多态，即项可以抽象并依赖于类型参数。例如 `identity : ∀α. α → α` 这样的函数，它们统一地适用于所有类型。
 
-**\\(\nearrow\\)-axis (Types depending on Types)**: Enables type operators where types can abstract over and depend on other types. This allows type constructors like `Maybe : * \\to *` that take types as arguments and produce new types.
+**↗-轴（类型依赖于类型）**：支持类型运算符，即类型可以抽象并依赖于其他类型。例如 `Maybe : * → *` 这样的类型构造器，它以类型为参数并生成新的类型。
 
-The eight vertices of the cube emerge from the different ways to combine these three dimensions of dependency. Each vertex represents a different typed system, obtained by enabling or disabling each form of abstraction:
+立方体的八个顶点源于这三种依赖维度的不同组合方式。每个顶点代表一个不同的类型系统，通过启用或禁用每种抽象形式得到：
 
-**Simply Typed Lambda Calculus (λ→)**: The foundation of the cube, supporting only term abstraction. Functions can abstract over terms (`λx:τ. e`) but types remain fixed and simple.
+**简单类型 λ 演算 (λ→)**：立方体的基础，仅支持项抽象。函数可以抽象项（`λx:τ. e`），但类型保持固定且简单。
 
-**System F (λ2)**: Adds polymorphism through type abstraction, enabling terms to abstract over types (`Λα. e`). This introduces parametric polymorphism where functions like identity can work uniformly across all types.
+**System F (λ2)**：通过类型抽象增加了多态，使项能够抽象类型（`Λα. e`）。这引入了参数多态，例如 `identity` 这样的函数可以统一地适用于所有类型。
 
-**System Fω (λω)**: Introduces higher-kinded types by adding type operators, allowing types to abstract over types (`λα:κ. τ`). This enables abstraction over type constructors like `Maybe` and `List`.
+**System Fω (λω)**：通过添加类型运算符引入高阶类类型，允许类型抽象类型（`λα:κ. τ`）。这使得对于 `Maybe` 和 `List` 等类型构造器的抽象成为可能。
 
-**Lambda P (λP)**: Adds dependent types where types can depend on terms. This allows types like `Vector n` where the length `n` is a term-level value, enabling precise specifications of data structure properties.
+**Lambda P (λP)**：添加依赖类型，其中类型可以依赖于项。这允许像 `Vector n` 这样的类型，其中长度 `n` 是一个项级别的值，从而能够精确描述数据结构的属性。
 
-**System Fω (λ2ω)**: Combines polymorphism with higher-kinded types, enabling both term abstraction over types and type abstraction over types. This is our target system, providing the expressiveness needed for modern functional programming.
+**System Fω (λ2ω)**：将多态与高阶类类型相结合，支持项对类型的抽象以及类型对类型的抽象。这是我们的目标系统，提供了现代函数式编程所需的表达能力。
 
-**System Fω-P (λωP)**: Combines higher-kinded types with dependent types, allowing  type-level computation that can depend on term-level values.
+**System Fω-P (λωP)**：将高阶类类型与依赖类型相结合，允许类型级别的计算依赖于项级别的值。
 
-**System FP (λ2P)**: Combines polymorphism with dependent types, enabling functions that are parametric over both types and values while allowing types to depend on those values.
+**System FP (λ2P)**：将多态与依赖类型相结合，使函数能够同时对类型和值进行参数化，同时允许类型依赖于这些值。
 
-**Calculus of Constructions (λ2ωP)**: The most expressive corner, combining all three forms of abstraction. This system underlies proof assistants like Coq and enables types that can express arbitrary logical propositions.
+**构造演算 (λ2ωP)**：最具表达力的顶点，结合了所有三种抽象形式。该系统支撑了 Coq 等证明助手，使类型能够表达任意的逻辑命题。
 
-The lambda cube demonstrates that these eight systems form a natural hierarchy, with each system being a conservative extension of those below it in the ordering. System Fω sits at a sweet spot, providing significant expressive power while maintaining decidable type checking and relatively straightforward implementation techniques.
+lambda 立方体表明，这八个系统形成了一个自然的层次结构，每个系统都是其下方系统的保守扩展。System Fω 处于一个理想位置，在提供显著表达能力的同时，保持了可判定的类型检查和相对直接的实现技术。
 
-Where System F introduced universal quantification over types (`∀α. τ`), System Fω extends this to quantification over type constructors of arbitrary kinds. This enables us to write functions that are polymorphic not just over types like `Int` or `Bool`, but over type constructors like `Maybe` or `List`, and even higher-order type constructors that take multiple type arguments.
+System F 引入了对类型的全称量化（`∀α. τ`），而 System Fω 将其扩展为对任意类别的类型构造器进行量化。这使我们能够编写不仅对 `Int` 或 `Bool` 等类型多态，而且对 `Maybe` 或 `List` 等类型构造器，甚至对接受多个类型参数的高阶类型构造器进行多态的函数。
 
-The type system is stratified by **kinds**, which classify types just as types classify terms:
+类型系统通过 **类别** 分层，类别如同类型对项进行分类一样对类型进行分类：
 
 \\[ \begin{align*}
-\text{kinds} \quad \kappa &::= \star \mid \kappa_1 \to \kappa_2 \\\\
-\text{types} \quad \tau &::= \alpha \mid \tau_1 \to \tau_2 \mid \forall \alpha:\kappa. \tau \mid \tau_1 \tau_2 \mid \lambda \alpha:\kappa. \tau \\\\
-\text{terms} \quad e &::= x \mid \lambda x:\tau. e \mid e_1 e_2 \mid \Lambda \alpha:\kappa. e \mid e[\tau]
+\text{类别} \quad \kappa &::= \star \mid \kappa_1 \to \kappa_2 \\\\
+\text{类型} \quad \tau &::= \alpha \mid \tau_1 \to \tau_2 \mid \forall \alpha:\kappa. \tau \mid \tau_1 \tau_2 \mid \lambda \alpha:\kappa. \tau \\\\
+\text{项} \quad e &::= x \mid \lambda x:\tau. e \mid e_1 e_2 \mid \Lambda \alpha:\kappa. e \mid e[\tau]
 \end{align*} \\]
 
-This hierarchy extends naturally upward: just as we need types to classify terms and kinds to classify types, we could in principle introduce **sorts** to classify kinds.
+这种层次结构自然向上延伸：正如我们需要类型来分类项，类别来分类类型，原则上我们可以引入 **种类** 来分类类别。
 
-While System Fω stops at the kind level for practical reasons, the theoretical framework suggests an infinite tower: terms have types, types have kinds, kinds have sorts, sorts have supersorts, and so on. This infinite hierarchy, known as the **cumulative hierarchy** in type theory, reflects the fundamental principle that every mathematical object must be classified by something at a higher level of abstraction. The aleph notation acknowledges this infinite ascent while recognizing that practical type systems must terminate the hierarchy at some finite level. More on this when we get to dependent types later!
+虽然 System Fω 出于实际原因止步于类别级别，但理论框架暗示了一个无限塔：项拥有类型，类型拥有类别，类别拥有种类，种类拥有超种类，以此类推。这个无限层次结构，在类型理论中称为 **累积层次结构**，反映了每个数学对象都必须由更高抽象层次的东西来分类的基本原则。阿列夫符号承认了这种无限上升，同时认识到实际的类型系统必须在某个有限级别终止层次结构。更多内容将在后面讨论依赖类型时涉及！
 
-## Higher-Kinded Types
+## 高阶类类型
 
-The key innovation of System Fω is the kind system. While ordinary types like `Int` and `Bool` have kind `*` (pronounced "star"), type constructors have function kinds:
+System Fω 的关键创新在于类别系统。虽然 `Int` 和 `Bool` 等普通类型具有类别 `*`（读作“星”），但类型构造器具有函数类别：
 
-- `Maybe` has kind `* -> *` (takes a type, returns a type)
-- `Either` has kind `* -> * -> *` (takes two types, returns a type)
-- A hypothetical `StateT` might have kind `* -> (* -> *) -> * -> *`
+- `Maybe` 具有类别 `* -> *`（接受一个类型，返回一个类型）
+- `Either` 具有类别 `* -> * -> *`（接受两个类型，返回一个类型）
+- 假设的 `StateT` 可能具有类别 `* -> (* -> *) -> * -> *`
 
-This stratification enables precise reasoning about type-level functions while maintaining decidable type checking.
+这种分层使得在保持可判定类型检查的同时，能够精确推理类型级别的函数。
 
-Our implementation demonstrates these concepts through a rich surface language that compiles to a core System Fω calculus. The surface syntax provides familiar algebraic data types and pattern matching:
+我们的实现通过一个丰富的表层语言演示了这些概念，该语言编译为核心 System Fω 演算。表层语法提供了熟悉的代数数据类型和模式匹配：
 
 ```haskell
 data Maybe a = Nothing | Just a
@@ -68,43 +68,43 @@ data Either a b = Left a | Right b
 data List a = Nil | Cons a (List a)
 ```
 
-These declarations create type constructors of appropriate kinds. `Maybe` becomes a type-level function that, when applied to a type like `Int`, produces the concrete type `Maybe Int`.
+这些声明创建了具有适当类别的类型构造器。`Maybe` 成为一个类型级别的函数，当应用于 `Int` 这样的类型时，产生具体类型 `Maybe Int`。
 
-## Type-Level Computation
+## 类型级别的计算
 
-System Fω supports type-level computation through type application and type abstraction. While our implementation focuses on the foundational mechanisms, the theoretical system allows arbitrary computation at the type level:
+System Fω 通过类型应用和类型抽象支持类型级别的计算。虽然我们的实现侧重于基础机制，但理论上该系统允许在类型级别进行任意计算：
 
-* **Type Application**: `F τ` applies type constructor `F` to type `τ`
-* **Type Abstraction**: `λα:κ. τ` creates a type-level function
+* **类型应用**：`F τ` 将类型构造器 `F` 应用于类型 `τ`
+* **类型抽象**：`λα:κ. τ` 创建一个类型级别的函数
 
-This enables  type-level programming, though our implementation focuses on the essential features needed for practical programming language design.
+这实现了类型级编程，尽管我们的实现专注于实际编程语言设计所需的核心功能。
 
-## Polymorphic Data Structures
+## 多态数据结构
 
-The combination of universal quantification and higher-kinded types enables elegant expression of polymorphic data structures and functions:
+全称量化与高阶类型的结合，使得多态数据结构和函数得以优雅表达：
 
 ```haskell
 map :: forall a b. (a -> b) -> List a -> List b
 foldRight :: forall a b. (a -> b -> b) -> b -> List a -> b
 ```
 
-These functions work uniformly across all types, demonstrating the power of parametric polymorphism in System Fω.
+这些函数在所有类型上统一运行，展示了 System Fω 中参数多态的强大能力。
 
-## Implementation Architecture
+## 实现架构
 
-Our System Fω implementation consists of several key components working together:
+我们的 System Fω 实现由以下几个关键组件协同工作：
 
-* **Surface Language**: A user-friendly syntax with algebraic data types, pattern matching, and type inference
-* **Core Language**: An explicit System Fω calculus with kinds, type abstractions, and applications
-* **Elaboration**: Translation from surface to core, inserting implicit type arguments and abstractions
-* **Type Inference**: A bidirectional algorithm based on the DK worklist approach
-* **Kind Inference**: Automatic inference of kinds for type constructors and type expressions
+* **表层语言**：提供用户友好的语法，包含代数数据类型、模式匹配和类型推断
+* **核心语言**：一种显式的 System Fω 演算，包含种类、类型抽象和类型应用
+* **精化**：从表层语言到核心语言的转换，插入隐式类型参数和抽象
+* **类型推断**：基于 DK 工作列表方法的双向算法
+* **种类推断**：自动推断类型构造子和类型表达式的种类
 
-The implementation demonstrates that  type systems can be made practical through careful algorithm design and implementation techniques.
+该实现表明，通过精心设计算法和实现技术，类型系统是可以变得实用的。
 
-Our implementation uses bidirectional type checking, which splits the problem into two complementary modes:
+我们的实现采用双向类型检查，将问题拆分为两个互补的模式：
 
-* **Synthesis (⇒)**: Given an expression, determine its type
-* **Checking (⇐)**: Given an expression and expected type, verify compatibility
+* **综合（⇒）**：给定一个表达式，确定其类型
+* **检查（⇐）**：给定一个表达式和期望类型，验证其兼容性
 
-This approach handles the complexity of higher-rank polymorphism and type applications while maintaining decidability and providing good error messages.
+这种方法在处理高阶多态和类型应用复杂性的同时，保持了可判定性并提供了良好的错误信息。

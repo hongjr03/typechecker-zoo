@@ -1,31 +1,31 @@
-# Examples
+# 示例
 
-Our System Fω implementation demonstrates its capabilities through a comprehensive suite of working examples that showcase the full range of the type system's features. These examples progress from basic algebraic data types through  higher-order polymorphic functions, illustrating how System Fω enables advanced programming patterns while maintaining type safety.
+我们的 System Fω 实现通过一套全面的工作示例展示了其能力，这些示例全面展现了类型系统的各种特性。这些示例从基础代数数据类型逐步深入到高阶多态函数，说明 System Fω 如何在保持类型安全的同时支持高级编程模式。
 
-The examples serve both as demonstrations of the implementation's correctness and as practical illustrations of how System Fω's theoretical power translates into useful programming language features. Each example successfully type checks under our implementation, proving that the  algorithms can handle real-world programming scenarios.
+这些示例既展示了实现的正确性，也实际说明了 System Fω 的理论威力如何转化为实用的编程语言特性。每个示例在我们的实现中都能成功通过类型检查，证明了算法能够处理现实世界的编程场景。
 
-## Basic Data Types and Pattern Matching
+## 基本数据类型与模式匹配
 
-The foundation of our System Fω implementation lies in its support for algebraic data types with comprehensive pattern matching. These features provide the building blocks for more  programming patterns.
+我们的 System Fω 实现的基础在于支持带有全面模式匹配的代数数据类型。这些特性为更复杂的编程模式提供了构建基础。
 
 ```rust
 #![source_file!("system-f-omega/examples/final_demo.hs")]
 ```
 
-### Algebraic Data Type Declarations
+### 代数数据类型声明
 
-The implementation supports rich data type definitions that demonstrate System Fω's kind system:
+该实现支持丰富的数据类型定义，展现了 System Fω 的 Kind 系统：
 
-* **Simple Enumerations**: `data Bool = True | False` creates a basic sum type
-* **Parameterized Types**: `data Maybe a = Nothing | Just a` shows kind `* -> *`
-* **Multi-Parameter Types**: `data Either a b = Left a | Right b` demonstrates kind `* -> * -> *`
-* **Recursive Types**: `data List a = Nil | Cons a (List a)` enables inductive data structures
+* **简单枚举**：`data Bool = True | False` 创建了一个基本和类型
+* **参数化类型**：`data Maybe a = Nothing | Just a` 展示了 Kind `* -> *`
+* **多参数类型**：`data Either a b = Left a | Right b` 展示了 Kind `* -> * -> *`
+* **递归类型**：`data List a = Nil | Cons a (List a)` 支持归纳数据结构
 
-Each declaration automatically infers appropriate kinds for the type constructors, showing how the implementation handles the kind system transparently.
+每个声明都能自动推断出类型构造函数的适当 Kind，展示了实现如何透明地处理 Kind 系统。
 
-### Pattern Matching with Type Safety
+### 类型安全的模式匹配
 
-Pattern matching provides safe destructuring of algebraic data types:
+模式匹配提供了对代数数据类型的安全解构：
 
 ```haskell
 not :: Bool -> Bool;
@@ -41,17 +41,17 @@ isJust m = match m {
 };
 ```
 
-The type checker verifies that:
-- All patterns cover the correct constructors
-- Pattern variables receive appropriate types
-- Branch expressions have compatible return types
-- Polymorphic types are handled consistently across branches
+类型检查器会验证：
+- 所有模式是否覆盖了正确的构造函数
+- 模式变量是否获得了合适的类型
+- 分支表达式是否具有兼容的返回类型
+- 多态类型是否在各个分支中一致地处理
 
-## Polymorphic Functions
+## 多态函数
 
-System Fω's universal quantification enables functions that work uniformly across all types, demonstrating parametric polymorphism in action.
+System Fω 的全称量化使得函数能够统一地作用于所有类型，展示了参数多态的实际应用。
 
-### Basic Polymorphic Functions
+### 基本多态函数
 
 ```haskell
 id :: a -> a;
@@ -61,12 +61,12 @@ const :: a -> b -> a;
 const x y = x;
 ```
 
-These functions showcase:
-- **Type Variable Scope**: Variables like `a` and `b` are implicitly quantified
-- **Principal Types**: The implementation infers the most general possible types
-- **Polymorphic Instantiation**: Each use can instantiate types differently
+这些函数展示了：
+- **类型变量作用域**：像 `a` 和 `b` 这样的变量是隐式量化的
+- **主类型**：实现会推断出最通用的可能类型
+- **多态实例化**：每次使用都可以以不同的方式实例化类型
 
-### Higher-Order Polymorphic Functions
+### 高阶多态函数
 
 ```haskell
 map :: (a -> b) -> List a -> List b;
@@ -82,16 +82,16 @@ fromMaybe def m = match m {
 };
 ```
 
-These examples demonstrate:
-- **Function Types as Arguments**: `(a -> b)` shows higher-order typing
-- **Recursive Polymorphic Functions**: `map` calls itself with consistent types
-- **Type-Safe Default Values**: `fromMaybe` maintains type consistency
+这些示例展示了：
+- **函数类型作为参数**：`(a -> b)` 展示了高阶类型
+- **递归多态函数**：`map` 以一致的类型调用自身
+- **类型安全的默认值**：`fromMaybe` 保持了类型一致性
 
-## Complex Polymorphic Programming
+## 复杂多态编程
 
-More  examples show how System Fω handles complex interactions between polymorphism, higher-order functions, and algebraic data types.
+更高级的示例展示了 System Fω 如何处理多态、高阶函数与代数数据类型之间的复杂交互。
 
-### Arithmetic and Comparison Operations
+### 算术与比较运算
 
 ```haskell
 add :: Int -> Int -> Int;
@@ -104,9 +104,9 @@ lessThan :: Int -> Int -> Bool;
 lessThan x y = x < y;
 ```
 
-Built-in operations integrate seamlessly with the user-defined type system, showing how primitive types participate in the same type-theoretic framework as algebraic data types.
+内置运算与用户定义的类型系统无缝集成，展示了原始类型如何与代数数据类型一样参与相同的类型理论框架。
 
-### Function Composition and Application
+### 函数组合与应用
 
 ```haskell
 composed :: Int;
@@ -119,16 +119,16 @@ listLength lst = match lst {
 };
 ```
 
-These examples demonstrate:
-- **Nested Function Applications**: Complex expressions type check correctly
-- **Polymorphic Recursion**: `listLength` works for lists of any type
-- **Type Preservation**: All intermediate computations maintain type safety
+这些示例展示了：
+- **嵌套函数应用**：复杂表达式能正确通过类型检查
+- **多态递归**：`listLength` 可作用于任何类型的列表
+- **类型保持**：所有中间计算都保持了类型安全
 
-## Advanced Programming Patterns
+## 高级编程模式
 
-Our implementation handles  programming patterns that require the full power of System Fω's type system.
+我们的实现处理需要 System Fω 类型系统全部威力的高级编程模式。
 
-### Constructor Applications and Type Inference
+### 构造函数应用与类型推断
 
 ```haskell
 testBool :: Bool;
@@ -141,12 +141,12 @@ testList :: List Int;
 testList = Cons 1 (Cons 2 (Cons 3 Nil));
 ```
 
-The type checker correctly infers types for constructor applications, handling:
-- **Type Application**: `Just` applied to `42` infers `Maybe Int`
-- **Nested Constructors**: Complex list structure maintains type consistency
-- **Polymorphic Instantiation**: Each constructor use gets appropriate type arguments
+类型检查器能够正确推断构造函数应用的类型，处理：
+- **类型应用**：`Just` 应用于 `42` 推断出 `Maybe Int`
+- **嵌套构造函数**：复杂列表结构保持了类型一致性
+- **多态实例化**：每次构造函数使用都会获得合适的类型参数
 
-### Pattern Matching with Complex Types
+### 复杂类型的模式匹配
 
 ```haskell
 either :: (a -> c) -> (b -> c) -> Either a b -> c;
@@ -162,18 +162,18 @@ mapMaybe f m = match m {
 };
 ```
 
-These functions showcase:
-- **Higher-Order Pattern Matching**: Functions as arguments in pattern contexts
-- **Type-Safe Elimination**: Pattern matching preserves all type relationships
-- **Functor Patterns**: `mapMaybe` demonstrates structure-preserving transformations
+这些函数展示了：
+- **高阶模式匹配**：函数作为模式上下文中的参数
+- **类型安全的消解**：模式匹配保持了所有类型关系
+- **函子模式**：`mapMaybe` 展示了保持结构不变的变换
 
-## Working Example Programs
+## 完整的示例程序
 
-The implementation includes several complete programs that demonstrate all features working together:
+该实现包含几个完整的程序，展示了所有特性如何协同工作：
 
-### Fibonacci with Polymorphic Utilities
+### 使用多态工具函数的斐波那契数列
 
-One example program implements Fibonacci numbers using polymorphic helper functions, showing how System Fω enables code reuse:
+一个示例程序使用多态辅助函数实现了斐波那契数列，展示了 System Fω 如何实现代码复用：
 
 ```haskell
 fibonacci :: Int -> Int;
@@ -183,9 +183,9 @@ fibonacci n = match lessThan n 2 {
 };
 ```
 
-### List Processing with Higher-Order Functions
+### 使用高阶函数的列表处理
 
-Another example demonstrates functional programming patterns with lists:
+另一个示例展示了使用列表的函数式编程模式：
 
 ```haskell
 filter :: (a -> Bool) -> List a -> List a;
@@ -204,36 +204,36 @@ foldRight f acc lst = match lst {
 };
 ```
 
-## Type Inference in Action
+## 类型推断的实际运行
 
-The examples demonstrate how the DK worklist algorithm handles complex type inference scenarios:
+这些示例展示了 DK 工作列表算法如何处理复杂的类型推断场景：
 
-### Existential Variable Resolution
+### 存在变量解析
 
-When processing expressions like `map (add 1) someList`, the algorithm:
-1. **Generates existential variables** for unknown types
-2. **Propagates constraints** through function applications
-3. **Unifies types** to discover that the list must have type `List Int`
-4. **Reports the final type** as `List Int`
+在处理像 `map (add 1) someList` 这样的表达式时，算法：
+1. **为未知类型生成存在变量**
+2. **通过函数应用传播约束**
+3. **统一类型**，发现列表必须具有类型 `List Int`
+4. **报告最终类型**为 `List Int`
 
-### Polymorphic Instantiation
+### 多态实例化
 
-For expressions using polymorphic functions multiple times:
+对于多次使用多态函数的表达式：
 ```haskell
 example = (id True, id 42, id someList)
 ```
 
-The algorithm correctly instantiates `id` with different types:
-- `id :: Bool -> Bool` for the first component
-- `id :: Int -> Int` for the second component
-- `id :: List a -> List a` for the third component
+该算法正确地用不同类型实例化 `id`：
+- `id :: Bool -> Bool` 用于第一个组件
+- `id :: Int -> Int` 用于第二个组件
+- `id :: List a -> List a` 用于第三个组件
 
-### Higher-Rank Polymorphism
+### 高阶多态性
 
-The implementation handles functions that accept polymorphic arguments:
+该实现能够处理接受多态参数的函数：
 ```haskell
 applyToEach :: (forall a. a -> a) -> (Bool, Int) -> (Bool, Int);
 applyToEach f (x, y) = (f x, f y);
 ```
 
-This demonstrates the implementation's support for higher-rank types where polymorphic types appear in argument positions.
+这展示了该实现对高阶类型的支持，其中多态类型出现在参数位置。

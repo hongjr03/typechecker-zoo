@@ -1,40 +1,40 @@
-# Summary
+# 摘要
 
-[Introduction](./introduction.md)
+[引言](./introduction.md)
 
-# Foundations
+# 基础
 
-- [Type Systems](./foundations/type-systems.md)
+- [类型系统](./foundations/type-systems.md)
 
-# Algorithm W
+# 算法 W
 
-- [Lambda Calculus](./algorithm-w/lambda-calculus.md)
-- [Type Inference](./algorithm-w/implementation.md)
-- [Examples](./algorithm-w/examples.md)
+- [λ演算](./algorithm-w/lambda-calculus.md)
+- [类型推断](./algorithm-w/implementation.md)
+- [示例](./algorithm-w/examples.md)
 
 # System F
 - [System F](./system-f/system-f.md)
-- [Type Checker](./system-f/implementation.md)
-- [Examples](./system-f/examples.md)
+- [类型检查器](./system-f/implementation.md)
+- [示例](./system-f/examples.md)
 
 # System Fω
 - [System Fω](./system-f-omega/system-f-omega.md)
-- [Language Design](./system-f-omega/language-design.md)
-- [Lexer and Parser](./system-f-omega/lexer-parser.md)
-- [Type Checking](./system-f-omega/type-inference.md)
-- [Code Generation](./system-f-omega/code-generation.md)
-- [Examples](./system-f-omega/examples.md)
+- [语言设计](./system-f-omega/language-design.md)
+- [词法分析与语法分析](./system-f-omega/lexer-parser.md)
+- [类型检查](./system-f-omega/type-inference.md)
+- [代码生成](./system-f-omega/code-generation.md)
+- [示例](./system-f-omega/examples.md)
 
-# Calculus of Constructions
-- [Overview](./coc/calculus-of-constructions.md)
-- [Dependent Types](./coc/dependent-types.md)
-- [Type System](./coc/type-system.md)
-- [Inductive Types](./coc/inductive-types.md)
-- [Type Rules](./coc/type-rules.md)
-- [Universe Polymorphism](./coc/universe-polymorphism.md)
-- [Constraint Solving](./coc/constraint-solving.md)
-- [Examples](./coc/examples.md)
+# 构造演算
+- [概述](./coc/calculus-of-constructions.md)
+- [依赖类型](./coc/dependent-types.md)
+- [类型系统](./coc/type-system.md)
+- [归纳类型](./coc/inductive-types.md)
+- [类型规则](./coc/type-rules.md)
+- [宇宙多态性](./coc/universe-polymorphism.md)
+- [约束求解](./coc/constraint-solving.md)
+- [示例](./coc/examples.md)
 
-# References
+# 参考文献
 
-- [References](./appendices/bibliography.md)
+- [参考文献](./appendices/bibliography.md)

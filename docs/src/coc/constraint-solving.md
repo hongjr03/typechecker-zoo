@@ -1,205 +1,205 @@
-# Constraint Solving
+# 约束求解
 
-The constraint solver forms the beating heart of our Calculus of Constructions implementation, handling the complex task of resolving unknown terms, types, and universe levels through systematic constraint propagation and unification.
+约束求解器构成了我们构造演算实现的核心，它通过系统的约束传播与合一，处理未知项、类型和宇宙层级的复杂解析工作。
 
-This is a non-trivial piece of software. That requirese quite a bit of care and thought. While this is a difficult piece of code, it is still far simpler than the 100k+ LOC implementations in Coq and Lean. This was the motivating example of this project to have a small CoC implementation that a sufficiently motivated (and probably caffeinated) undergraduate could read through in an afternoon.
+这是一块不可小觑的软件，需要相当多的细致思考与精心设计。尽管这段代码难度较高，但它仍然远比 Coq 和 Lean 中超过十万行代码的实现简单得多。本项目之所以以此为例，就是为了提供一个足够精简的 CoC 实现，让一位足够有动力（很可能还喝了咖啡）的本科生能在一下午通读完成。
 
-So grab an espresso (or two or three) and buckle up!
+所以，喝上一杯（或两三杯）意式浓缩，系好安全带吧！
 
-## Core Data Structures
+## 核心数据结构
 
-The solver operates on several fundamental data structures that capture the essence of constraint-based type inference in dependent type systems.
+求解器操作在几个基本数据结构之上，这些结构捕捉了依赖类型系统中基于约束的类型推断的本质。
 
-### Meta-Variable Management
+### 元变量管理
 
 ```rust
 #![struct!("coc/src/solver.rs", MetaInfo)]
 ```
 
-Meta-variables represent unknown terms that must be resolved through constraint solving. Our implementation maintains comprehensive metadata for each meta-variable, enabling  dependency tracking and solution propagation:
+元变量表示必须通过约束求解来解析的未知项。我们的实现为每个元变量维护了完整的元数据，支持依赖追踪和求解传播：
 
 ```rust
 #![struct!("coc/src/solver.rs", MetaId)]
 ```
 
-The `MetaInfo` structure demonstrates how we track the complete lifecycle of unknown terms. The `context` field preserves the variable scope at the meta-variable's creation point, ensuring that solutions respect lexical scoping. The `dependencies` field tracks which other meta-variables must be resolved before this one can be solved, enabling topological ordering of constraint resolution.
+`MetaInfo` 结构展示了我们如何追踪未知项的完整生命周期。`context` 字段保存了元变量创建时的变量作用域，确保求解结果遵循词法作用域。`dependencies` 字段追踪在解此元变量之前必须先解决的其他元变量，从而实现对约束求解的拓扑排序。
 
-### Constraint Representation
+### 约束表示
 
 ```rust
 #![enum!("coc/src/solver.rs", Constraint)]
 ```
 
-Our constraint system supports multiple categories of relationships that arise during dependent type checking:
+我们的约束系统支持在依赖类型检查过程中出现的多种关系类别：
 
-**Unification Constraints** (`Unify`) represent the core requirement that two terms must be equal, with strength indicating solving priority. These constraints drive the primary unification algorithm and handle most structural equality requirements.
+**合一约束**（`Unify`）表示两个项必须相等这一核心要求，强度指示了求解的优先级。这些约束驱动主要的合一算法，并处理大多数结构等价性需求。
 
-**Type Constraints** (`HasType`) ensure that terms inhabit their expected types, enabling type-directed constraint generation that guides the solver toward meaningful solutions.
+**类型约束**（`HasType`）确保项属于其预期的类型，从而生成类型导向的约束，引导求解器朝着有意义的解前进。
 
-**Universe Constraints** handle the complex relationships between universe levels, supporting both equality (`UnifyUniverse`) and ordering (`UniverseLevel`) requirements that maintain the hierarchy's consistency.
+**宇宙约束**处理宇宙层级之间的复杂关系，支持等式约束（`UnifyUniverse`）和排序约束（`UniverseLevel`），以维护层次结构的一致性。
 
-**Delayed Constraints** represent  patterns that cannot be solved immediately, waiting for specific meta-variables to be resolved before attempting solution.
+**延迟约束**表示那些无法立即求解的模式，需要等待特定的元变量被解析后再尝试求解。
 
-### Constraint Strength and Prioritization
+### 约束强度与优先级
 
 ```rust
 #![enum!("coc/src/solver.rs", ConstraintStrength)]
 ```
 
-The constraint strength system enables intelligent solving order that maximizes the chances of finding solutions through a three-tier priority hierarchy. Required constraints represent fundamental relationships that must be satisfied for type checking to succeed and receive the highest priority during constraint resolution. These constraints typically arise from explicit type annotations or structural requirements that cannot be compromised.
+约束强度系统通过三级优先级层次实现了智能求解顺序，以最大化找到解的可能性。必要约束表示类型检查成功必须满足的基本关系，在约束求解中拥有最高优先级。这些约束通常来自明确的类型标注或不可妥协的结构性要求。
 
-Preferred constraints should be solved when possible but can be postponed if necessary to make progress on more critical constraints. These constraints often represent desirable properties or optimizations that improve the quality of solutions without being strictly necessary for correctness. Weak constraints provide guidance to the solver about preferred solutions but will not block progress if they prove unsolvable, allowing the algorithm to find workable solutions even when ideal solutions are not available.
+优先约束在可能时应予求解，但若需要在更关键约束上取得进展，也可推迟它们。这些约束通常代表可取的性质或优化，虽非正确性所严格必需，但能提升解的质量。弱约束则为求解器提供关于首选解的指导，但如果无法求解也不会阻塞进展，从而允许算法在无法得到理想解时仍能找到可行的解。
 
-## Constraint Solver
+## 约束求解器
 
 ```rust
 #![struct!("coc/src/solver.rs", Solver)]
 ```
 
-The `Solver` represents the culmination of our constraint solving approach, integrating multiple  algorithms into a unified framework. The solver maintains several critical data structures:
+`Solver` 代表了我们约束求解方法的集大成者，将多种算法集成到一个统一框架中。求解器维护以下几个关键数据结构：
 
-**Meta-variable Registry** (`metas`) tracks all unknown terms with their complete metadata and dependency relationships.
+**元变量注册表**（`metas`）追踪所有未知项及其完整的元数据和依赖关系。
 
-**Constraint Management** (`constraints`, `queue`) maintains active constraints in a priority queue that enables intelligent solving order.
+**约束管理**（`constraints`、`queue`）将活跃约束维护在一个优先级队列中，实现智能求解顺序。
 
-**Dependency Tracking** (`dependencies`) builds a graph of relationships between meta-variables and constraints, enabling topological solving and cycle detection.
+**依赖追踪**（`dependencies`）构建元变量与约束之间的关系图，支持拓扑求解和循环检测。
 
-**Advanced Features** (`enable_miller_patterns`, `enable_has_type_solving`) can be activated for handling higher-order unification patterns and complex type constraints.
+**高级功能**（`enable_miller_patterns`、`enable_has_type_solving`）可激活以处理高阶合一模式及复杂类型约束。
 
-### Meta-Variable Creation and Tracking
+### 元变量创建与追踪
 
 ```rust
 #![function!("coc/src/solver.rs", Solver::fresh_meta)]
 ```
 
-Fresh meta-variable generation demonstrates how we maintain proper scoping and context information. Each meta-variable captures the variables that were in scope at its creation point, enabling proper variable capture analysis during solution.
+生成新元变量的过程展示了我们如何维护正确的作用域和上下文信息。每个元变量捕获了其创建时在作用域内的变量，从而在求解过程中能够正确分析变量捕获。
 
 ```rust
 #![function!("coc/src/solver.rs", Solver::fresh_universe_meta)]
 ```
 
-Universe meta-variables represent unknown universe levels that get resolved through the universe constraint solver, enabling flexible universe polymorphism.
+宇宙元变量表示未知的宇宙层级，通过宇宙约束求解器进行解析，从而实现灵活的宇宙多态。
 
-### Constraint Management and Dependencies
+### 约束管理与依赖关系
 
 ```rust
 #![function!("coc/src/solver.rs", Solver::add_constraint)]
 ```
 
-Adding constraints to the solver involves  dependency tracking that identifies which meta-variables appear in each constraint:
+向求解器添加约束涉及依赖追踪，以识别每个约束中出现的元变量：
 
 ```rust
 #![function!("coc/src/solver.rs", Solver::track_meta_occurrences)]
 ```
 
-This dependency tracking enables several critical solver capabilities that ensure efficient and correct constraint resolution. The solver can wake up sleeping constraints when their dependent meta-variables get resolved, allowing previously blocked constraints to become active and potentially solvable. Topological ordering of constraint resolution ensures that constraints are solved in an order that respects their dependencies, maximizing the chances of successful resolution by handling simpler constraints before more complex ones that depend on their solutions.
+这种依赖追踪使得求解器具备几个关键能力，从而确保高效且正确的约束求解。求解器可以在其依赖的元变量被解析后唤醒休眠的约束，使先前受阻的约束重新活跃并可解。约束求解的拓扑排序确保求解按依赖顺序进行，通过先处理较简单的约束，再处理依赖其解的更复杂约束，最大限度地提高成功解析的可能性。
 
-The dependency tracking also enables detection of circular dependencies that might indicate unsolvable constraint systems. When the solver identifies cycles in the dependency graph, it can report these as errors rather than entering infinite loops, providing users with meaningful feedback about problematic constraint patterns.
+依赖追踪还能够检测可能表明约束系统不可解的循环依赖。当求解器在依赖图中发现循环时，可以将其报告为错误，而不是陷入无限循环，从而为用户提供关于有问题的约束模式的有意义反馈。
 
 ```rust
 #![function!("coc/src/solver.rs", Solver::collect_metas_in_constraint)]
 ```
 
-The meta-variable collection algorithm recursively traverses constraint structures to identify all dependencies, building the complete dependency graph that guides solving order.
+元变量收集算法递归遍历约束结构以识别所有依赖关系，构建指导求解顺序的完整依赖图。
 
-## Substitution System
+## 替换系统
 
 ```rust
 #![struct!("coc/src/solver.rs", Substitution)]
 ```
 
-Substitutions represent partial solutions to the constraint system, mapping meta-variables to their resolved terms. Our substitution system handles both term-level and universe-level substitutions with proper normalization.
+替换表示约束系统的部分解，将元变量映射到其解析后的项。我们的替换系统处理项级别和宇宙级别的替换，并执行适当的规范化。
 
-### Substitution Application
+### 替换应用
 
 ```rust
 #![function!("coc/src/solver.rs", Substitution::apply)]
 ```
 
-The substitution application algorithm demonstrates the recursive nature of constraint solving in dependent type systems. When applying substitutions to terms like `Pi`, `Abs`, and `Let`, we must carefully handle variable binding and scope to avoid capture issues.
+替换应用算法展示了依赖类型系统中约束求解的递归本质。当对 `Pi`、`Abs` 和 `Let` 等项应用替换时，我们必须小心处理变量绑定和作用域，以避免捕获问题。
 
 ```rust
 #![function!("coc/src/solver.rs", Substitution::apply_universe)]
 ```
 
-Universe substitutions require special handling due to their arithmetic nature. The normalization process simplifies expressions like `Const(0) + 1` to `Const(1)`, maintaining canonical forms that improve unification success rates.
+宇宙替换由于其算术性质需要特殊处理。规范化过程将 `Const(0) + 1` 等表达式简化为 `Const(1)`，保持规范形式，从而提高合一成功率。
 
 ```rust
 #![function!("coc/src/solver.rs", Substitution::normalize_universe_static)]
 ```
 
-Static normalization performs universe-level arithmetic, combining constants and simplifying maximum expressions. This normalization is crucial for universe constraint solving, as it enables recognition of equivalent universe expressions that might otherwise appear different.
+静态规范化执行宇宙级别的算术运算，合并常量并简化最大值表达式。这种规范化对于宇宙约束求解至关重要，因为它能够识别出原本可能看似不同的等价宇宙表达式。
 
-## Main Constraint Solving Algorithm
+## 主要约束求解算法
 
 ```rust
 #![function!("coc/src/solver.rs", Solver::solve)]
 ```
 
-The main solving loop demonstrates the iterative constraint propagation approach that drives our constraint solver through a systematic process of constraint resolution and solution propagation. The algorithm maintains several critical invariants that ensure both correctness and termination. The progress guarantee ensures that each iteration either successfully solves one or more constraints or detects unsolvable situations that can be reported as errors, preventing the solver from entering infinite loops without making meaningful progress.
+主求解循环展示了迭代约束传播方法，该方法通过系统的约束求解和解决方案传播过程驱动约束求解器。该算法维护了几个关键不变量，以确保正确性和终止性。进度保证确保每次迭代要么成功求解一个或多个约束，要么检测到可报告为错误的不可解情况，从而防止求解器陷入无意义进展的无限循环。
 
-Dependency respect ensures that constraints are solved in topological order based on meta-variable dependencies, so that simpler constraints whose solutions might enable the resolution of more complex constraints are prioritized appropriately. Solution propagation guarantees that when meta-variables are resolved, their solutions immediately propagate throughout the entire constraint system, potentially enabling the resolution of previously blocked constraints and maintaining consistency across the solver state.
+依赖尊重确保约束按照基于元变量依赖关系的拓扑顺序求解，从而使可能有助于解决更复杂约束的简单约束优先得到适当处理。解决方案传播保证当元变量被解析后，其解会立即传播到整个约束系统，从而可能启用之前被阻塞的约束的求解，并保持求解器状态的一致性。
 
-### Constraint Selection Strategy
+### 约束选择策略
 
-The solver uses intelligent constraint selection to maximize solving success:
+求解器使用智能约束选择来最大化求解成功：
 
 ```rust
 let constraint_id = self.pick_constraint()?;
 let constraint = self.constraints.remove(&constraint_id).unwrap();
 ```
 
-The `pick_constraint` method prioritizes constraints based on several strategic factors that maximize solving efficiency. Constraint strength provides the primary ordering criterion, with required constraints taking precedence over preferred constraints, which in turn take precedence over weak constraints. This ensures that fundamental type checking requirements are addressed before optional optimizations or guidance hints.
+`pick_constraint` 方法根据几个战略因素对约束进行优先级排序，以最大化求解效率。约束强度提供了主要排序标准，必需约束优先于首选约束，而首选约束又优先于弱约束。这确保了基本的类型检查需求在可选的优化或指导提示之前得到处理。
 
-The number of unknown meta-variables in each constraint provides a secondary ordering criterion, with constraints containing fewer unknowns receiving higher priority since they are more likely to be solvable immediately. Constraint type also influences prioritization, as unification constraints often resolve other constraints by instantiating meta-variables that appear in multiple constraint relationships.
+每个约束中未知元变量的数量提供了次要排序标准，包含较少未知变量的约束获得更高优先级，因为它们更有可能立即求解。约束类型也影响优先级排序，因为合一约束通常通过实例化出现在多个约束关系中的元变量来解析其他约束。
 
-### Solution Propagation
+### 解决方案传播
 
-When a constraint is successfully solved, the solver propagates the solution throughout the system:
+当约束成功求解后，求解器将解决方案传播到整个系统：
 
 ```rust
 if progress {
     self.propagate_solution()?;
     let woken_constraints = self.wake_delayed_constraints()?;
-    // Continue with newly awakened constraints...
+    // 继续处理新唤醒的约束...
 }
 ```
 
-Solution propagation involves a systematic process of updating the entire constraint system to reflect newly discovered solutions. Substitution application ensures that new solutions are applied to all remaining constraints in the system, potentially simplifying them or enabling their resolution. This step transforms the constraint system by replacing meta-variables with their concrete solutions wherever they appear.
+解决方案传播涉及一个系统性的过程，即更新整个约束系统以反映新发现的解。替换应用确保将新解应用于系统中所有剩余的约束，可能简化它们或使其得以求解。这一步通过替换所有出现处的元变量为其具体解来转换约束系统。
 
-Constraint wakeup activates delayed constraints that were waiting for the resolved meta-variables, bringing previously blocked constraints back into active consideration for solving. This mechanism ensures that the constraint resolution process can handle complex interdependencies where some constraints cannot be solved until others provide the necessary information.
+约束唤醒会激活那些等待已解析元变量的延迟约束，使之前被阻塞的约束重新进入活跃求解状态。这种机制确保了约束求解过程能够处理复杂的相互依赖关系，其中某些约束必须等待其他约束提供必要信息后才能求解。
 
-Dependency updates modify the dependency graph to reflect newly resolved variables, removing solved meta-variables from dependency tracking and updating the topological ordering used for constraint selection. This maintenance ensures that the solver's internal data structures remain consistent and efficient as solutions accumulate.
+依赖更新会修改依赖图以反映新解析的变量，从依赖跟踪中移除已求解的元变量，并更新用于约束选择的拓扑排序。这种维护确保了求解器的内部数据结构随着解的积累保持一致和高效。
 
-## Unification in Dependent Type Systems
+## 依赖类型系统中的合一
 
-Unification in dependent type systems presents challenges beyond those encountered in simple type systems like System F. The interdependence between terms and types means that unifying types may require solving for unknown terms, while unifying terms may generate constraints on their types.
+依赖类型系统中的合一带来了超越 System F 等简单类型系统的挑战。项和类型之间的相互依赖意味着统一类型可能需要求解未知项，而统一项可能产生关于其类型的约束。
 
-This interdependency creates several complications:
+这种相互依赖导致了几个复杂问题：
 
-**Type-Term Dependencies**: When unifying `Π(x : A). B x` with `Π(y : A'). B' y`, we must unify both the parameter types `A` and `A'` and the dependent result types `B x` and `B' y`. The unification of result types depends on the solution to parameter type unification.
+**类型-项依赖**：当合一 `Π(x : A). B x` 与 `Π(y : A'). B' y` 时，我们必须合一参数类型 `A` 和 `A'` 以及依赖结果类型 `B x` 和 `B' y`。结果类型的合一依赖于参数类型合一的解。
 
-**Meta-Variable Scope Management**: Meta-variables representing unknown terms must respect the variable binding structure of dependent types. A meta-variable created in a particular binding context cannot be instantiated with a term that references variables outside that context.
+**元变量作用域管理**：表示未知项的元变量必须尊重依赖类型的变量绑定结构。在特定绑定上下文中创建的元变量不能被实例化为引用该上下文外部变量的项。
 
-**Higher-Order Meta-Variables**: In dependent type systems, meta-variables can represent unknown functions, leading to higher-order unification problems where we must solve for unknown function-level terms rather than just unknown ground terms.
+**高阶元变量**：在依赖类型系统中，元变量可以表示未知函数，导致需要求解未知函数级项而非仅仅未知基础项的高阶合一问题。
 
-## Unification Algorithm
+## 合一算法
 
-The core unification algorithm handles the fundamental task of making two dependent types equal:
+核心合一算法处理使两个依赖类型相等的基本任务：
 
 ```rust
 #![function!("coc/src/unification.rs", Unifier::unify)]
 ```
 
-Our unification algorithm supports several  patterns:
+我们的合一算法支持多种模式：
 
-**Structural Unification**: When both terms have the same head constructor, unification proceeds by recursively unifying subcomponents.
+**结构合一**：当两个项具有相同的头构造器时，合一通过递归合一子组件进行。
 
-**Meta-Variable Instantiation**: When one side is a meta-variable, we create a substitution that maps the variable to the other term, subject to occurs checking.
+**元变量实例化**：当一边是元变量时，我们创建一个将变量映射到另一项上的替换，但需进行出现检查。
 
-**Higher-Order Patterns**: Advanced patterns like Miller patterns enable limited higher-order unification that remains decidable.
+**高阶模式**：像 Miller 模式这样的高级模式实现了有限的高阶合一，该合一仍然是可判定的。
 
-### Meta-Variable Resolution
+### 元变量解析
 
 ```rust
 match (&term1, &term2) {
@@ -217,13 +217,13 @@ match (&term1, &term2) {
 }
 ```
 
-Meta-variable resolution involves a systematic multi-step process that ensures both correctness and consistency. Solution lookup first checks whether the meta-variable already has a solution from previous constraint resolution, avoiding redundant work and ensuring that existing solutions are properly utilized. The occurs check ensures that the proposed solution would not create infinite types by verifying that the meta-variable does not occur within its own solution term, preventing the creation of cyclic type definitions that would violate the soundness of the type system.
+元变量解析涉及一个系统化的多步骤流程，以确保正确性和一致性。解查找首先检查该元变量是否已通过先前的约束求解获得了解，从而避免重复工作并确保现有解得到正确利用。出现检测通过验证元变量不出现在其自身的解项中，来确保所提议的解不会创建无限类型，从而防止产生违反类型系统健全性的循环类型定义。
 
-Context validation verifies that the solution respects variable scoping requirements, ensuring that the solution term does not reference variables that are not in scope at the meta-variable's binding site. This check is crucial for maintaining the lexical scoping discipline that dependent type systems require. Finally, solution recording adds the verified solution to the substitution system and propagates it throughout the constraint system, updating all constraints that reference the newly solved meta-variable.
+上下文验证确保解尊重变量作用域要求，验证解项不会引用在元变量绑定位置超出作用域的变量。这一检查对于维护依赖类型系统所需的词法作用域纪律至关重要。最后，解记录将经验证的解添加到替换系统中，并在整个约束系统中传播，更新所有引用了新求解元变量的约束。
 
-### Dependent Type Unification
+### 依赖类型统一
 
-Unifying dependent types requires special handling of binding structures:
+统一依赖类型需要特殊处理绑定结构：
 
 ```rust
 (Term::Pi(x1, ty1, body1, _), Term::Pi(x2, ty2, body2, _)) => {
@@ -242,53 +242,53 @@ Unifying dependent types requires special handling of binding structures:
 }
 ```
 
-This demonstrates the intricate complexity of dependent type unification, where multiple interdependent steps must be carefully orchestrated. Parameter types must unify first to establish the foundation for the dependent relationship, as the result type depends on the parameter type's structure and properties. Body types are then unified under the extended context that includes the parameter binding, ensuring that dependent references within the body are properly handled.
+这展示了依赖类型统一中错综复杂的复杂性——多个相互依赖的步骤必须精心协调。参数类型必须首先统一，以建立依赖关系的基础，因为结果类型依赖于参数类型的结构和属性。然后，在包含参数绑定的扩展上下文下统一体类型，确保体中的依赖引用得到正确处理。
 
-Alpha-renaming ensures that variable names do not interfere between the two dependent types being unified, preventing accidental capture or confusion between similarly named but distinct variables. The substitutions discovered during parameter unification must propagate to the body unification process, as changes to parameter types may affect the validity and structure of the dependent result types.
+Alpha 重命名确保变量名不会干扰被统一的两种依赖类型，防止名称相似但不同的变量之间发生意外捕获或混淆。在参数统一过程中发现的替换必须传播到体统一过程，因为参数类型的变更可能影响依赖结果类型的有效性和结构。
 
-## Advanced Constraint Patterns
+## 高级约束模式
 
-### Higher-Order Unification and Miller Patterns
+### 高阶统一与米勒模式
 
-Higher-order unification extends first-order unification to handle function-level unknowns, where meta-variables can represent unknown functions rather than just unknown terms. While first-order unification asks "what value makes these terms equal?", higher-order unification asks "what function makes these applications equal?"
+高阶统一将一阶统一扩展以处理函数级未知量，其中元变量可以表示未知函数而不仅仅是未知项。一阶统一问的是“什么值使得这些项相等？”，而高阶统一问的是“什么函数使得这些应用相等？”
 
-The fundamental challenge of higher-order unification lies in its undecidability. Unlike first-order unification, which always terminates with either a solution or failure, general higher-order unification can run indefinitely without reaching a conclusion. This undecidability stems from the ability to construct arbitrarily complex function expressions that satisfy unification constraints.
+高阶统一的基本挑战在于其不可判定性。与总是终止于解或失败的一阶统一不同，一般的高阶统一可能无限运行而不得出结论。这种不可判定性源于可以构造满足统一约束的任意复杂函数表达式的能力。
 
-Consider the higher-order unification problem `?F a b = g (h a) b`. The meta-variable `?F` represents an unknown function of two arguments. Potential solutions include `λx y. g (h x) y`, but also more complex forms like `λx y. g (h (id x)) y` where `id` is the identity function. The search space of possible solutions is infinite, making termination impossible to guarantee.
+考虑高阶统一问题 `?F a b = g (h a) b`。元变量 `?F` 表示一个双参数未知函数。可能的解包括 `λx y. g (h x) y`，但也包括更复杂的形式如 `λx y. g (h (id x)) y`（其中 `id` 是恒等函数）。可能解的搜索空间是无限的，这使得无法保证终止性。
 
-#### Miller Pattern Restrictions
+#### 米勒模式限制
 
-Miller patterns resolve this undecidability by imposing syntactic restrictions on higher-order unification problems that restore decidability while preserving significant expressive power. A Miller pattern has the form `?M x₁ ... xₙ = t` where several critical conditions must be satisfied. All arguments `x₁ ... xₙ` must be distinct bound variables, ensuring that the pattern represents a proper functional relationship without duplication or confusion between parameters.
+米勒模式通过施加句法限制来解决这种不可判定性，这些限制恢复了可判定性，同时保留了显著的表达能力。米勒模式的形式为 `?M x₁ ... xₙ = t`，其中必须满足几个关键条件。所有参数 `x₁ ... xₙ` 必须是不同的绑定变量，确保该模式表示一个适当的函数关系，参数之间没有重复或混淆。
 
-The meta-variable must be applied only to variables rather than complex terms, maintaining the "variable spine" property that prevents the exponential explosion of potential solutions that can arise when meta-variables are applied to arbitrary expressions. The term `t` must not contain the meta-variable `?M` itself, preventing occurs check violations that would lead to infinite types. Finally, abstraction safety requires that all free variables appearing in `t` must appear among the arguments `x₁ ... xₙ`, ensuring that the solution can be properly abstracted over the pattern variables.
+元变量必须只应用于变量而非复杂项，以保持“变量主轴”属性，防止当元变量应用于任意表达式时可能出现的潜在解指数爆炸。项 `t` 不得包含元变量 `?M` 本身，以防止导致无限类型的出现检测违反。最后，抽象安全性要求 `t` 中出现的所有自由变量必须出现在参数 `x₁ ... xₙ` 中，确保解可以恰当地抽象为模式变量。
 
-These restrictions ensure that Miller pattern unification problems have unique most general unifiers when solutions exist, restoring decidability to this fragment of higher-order unification.
+这些限制确保了当解存在时，米勒模式统一问题具有唯一的最一般统一子，从而恢复了高阶统一这一片段的可判定性。
 
-#### Miller Pattern Detection
+#### 米勒模式检测
 
-Our implementation includes comprehensive Miller pattern detection:
+我们的实现包含全面的米勒模式检测：
 
 ```rust
 #![function!("coc/src/solver.rs", Solver::is_simple_miller_pattern)]
 ```
 
-The detection algorithm verifies that the left side forms a proper Miller pattern with distinct variable arguments and that the right side can be safely abstracted over those variables. This checking ensures that attempted solutions will satisfy the Miller pattern restrictions.
+检测算法验证左侧是否形成了具有不同变量参数的适当米勒模式，并且右侧是否可以安全地抽象为这些变量。此检查确保尝试的解将满足米勒模式限制。
 
-#### Miller Pattern Solving Algorithm
+#### 米勒模式求解算法
 
-When Miller pattern solving is enabled, the solver handles these advanced patterns:
+当启用米勒模式求解时，求解器处理这些高级模式：
 
 ```rust
 #![function!("coc/src/solver.rs", Solver::solve_miller_pattern)]
 ```
 
-The Miller pattern solver constructs lambda abstractions that capture the relationship between the pattern variables and the target term. For patterns like `?M x = t`, the solution becomes `?M := λx. t`, provided that `t` satisfies the abstraction conditions.
+米勒模式求解器构造 lambda 抽象，捕获模式变量与目标项之间的关系。对于像 `?M x = t` 这样的模式，解变为 `?M := λx. t`，前提是 `t` 满足抽象条件。
 
-Miller patterns represent a restricted form of higher-order unification that remains decidable while supporting many practical programming patterns that arise in dependent type theory and proof assistants.
+米勒模式代表了高阶统一的一种受限形式，它在保持可判定性的同时支持依赖类型理论和证明助手中出现的许多实用编程模式。
 
-### Delayed Constraint Resolution
+### 延迟约束求解
 
-Complex constraints that cannot be solved immediately get delayed until more information becomes available:
+无法立即求解的复杂约束会被延迟，直到更多信息变得可用：
 
 ```rust
 Constraint::Delayed { constraint, waiting_on, .. } => {
@@ -302,11 +302,11 @@ Constraint::Delayed { constraint, waiting_on, .. } => {
 }
 ```
 
-The delayed constraint system enables the solver to handle complex patterns that arise in  dependent type checking scenarios.
+延迟约束系统使求解器能够处理依赖类型检查场景中出现的复杂模式。
 
-## Error Handling and Diagnostics
+## 错误处理与诊断
 
-The constraint solver provides comprehensive error reporting that helps users understand solving failures:
+约束求解器提供全面的错误报告，帮助用户理解求解失败的原因：
 
 ```rust
 pub enum ConstraintError {
@@ -318,8 +318,8 @@ pub enum ConstraintError {
 }
 ```
 
-Each error type provides specific diagnostic information about why constraint solving failed, enabling users to understand and address the underlying issues. Unification failures present the conflicting terms along with a detailed explanation of why they cannot be made equal, helping programmers identify type mismatches and structural incompatibilities in their code. Occurs check violations identify situations where infinite types would result from a proposed solution, catching recursive type definitions that would violate the type system's soundness.
+每种错误类型都提供关于求解失败原因的具体诊断信息，使用户能够理解并解决根本问题。统一失败呈现冲突的项，并详细解释它们为何无法相等，帮助程序员识别代码中的类型不匹配和结构不兼容。出现检查违例识别出提议的解决方案会导致无限类型的情况，捕获会破坏类型系统可靠性的递归类型定义。
 
-Scope violations detect variables that escape their intended lexical scope, typically occurring when meta-variable solutions reference variables that are not available in the solution's binding context. Circular dependencies identify unsolvable constraint cycles where constraints depend on each other in ways that prevent any progress, indicating fundamental problems in the constraint system structure. Universe inconsistencies indicate violations of the universe hierarchy, such as attempting to place a large universe inside a smaller one, which would compromise the type system's logical consistency.
+作用域违例检测到变量逃逸其预期的词法作用域，通常发生在元变量解决方案引用了其绑定上下文中不可用的变量时。循环依赖识别出无法求解的约束循环，其中约束以互相依赖的方式阻碍任何进展，表明约束系统结构中的根本性问题。宇宙不一致表明违反了宇宙层级结构，例如试图将一个较大的宇宙放入一个较小的宇宙中，这会危害类型系统的逻辑一致性。
 
-And phew, that's it. We're done.
+呼，就是这样。我们完成了。

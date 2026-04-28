@@ -1,85 +1,85 @@
-# Examples
+# 示例
 
-The simplest cases involve literals and variables where type inference is straightforward. Integer literals have type `Int`, boolean literals have type `Bool`, and variables receive the types assigned to them in the typing environment.
+最简单的情况涉及字面量和变量，其中类型推断是直接的。整数字面量具有类型 `Int`，布尔字面量具有类型 `Bool`，而变量则接收在类型环境中分配给它们的类型。
 
-Let's examine how our implementation handles these basic cases using the test suite that validates our Algorithm W implementation.
+让我们通过测试套件来检查我们的实现如何处理这些基本情况，该测试套件验证了我们的 Algorithm W 实现。
 
 ```rust
 #![source_file!("algorithm-w/tests/basic.fun")]
 ```
 
-These examples demonstrate the foundation of type inference. The literal `42` immediately receives type `Int` without any complex reasoning required. Boolean values like `true` and `false` similarly receive type `Bool`. The type system's handling of these base cases forms the building blocks for more complex inference scenarios.
+这些示例展示了类型推断的基础。字面量 `42` 立即被赋予类型 `Int`，无需任何复杂的推理。布尔值如 `true` 和 `false` 也同样被赋予类型 `Bool`。类型系统对这些基本情况的处理构成了更复杂推断场景的构建块。
 
-## Function Types and Application
+## 函数类型与应用
 
-Function types represent the core of lambda calculus and functional programming. When we encounter a lambda abstraction, Algorithm W assigns a fresh type variable to the parameter and infers the type of the body. The resulting function type connects the parameter type with the return type through an arrow.
+函数类型是 lambda 演算和函数式编程的核心。当我们遇到 lambda 抽象时，Algorithm W 为参数分配一个新鲜的类型变量，并推断函数体的类型。得到的函数类型通过箭头连接参数类型与返回类型。
 
-Function application drives the constraint generation that makes Algorithm W powerful. When applying a function to an argument, the algorithm generates constraints that the function's type must be an arrow from the argument's type to some result type. Unification then solves these constraints.
+函数应用驱动了约束生成，这正是 Algorithm W 的强大之处。当将一个函数应用于参数时，算法会生成约束，要求函数的类型必须是从参数类型到某个结果类型的箭头类型。然后通过合一化解决这些约束。
 
-The identity function `\x -> x` provides the simplest example of polymorphic type inference. Algorithm W assigns a fresh type variable to the parameter `x`, then discovers that the body is just `x` itself. The resulting type `t0 -> t0` captures the essence of the identity function: it accepts any type and returns the same type.
+恒等函数 `\x -> x` 是最简单的多态类型推断示例。Algorithm W 为参数 `x` 分配一个新鲜的类型变量，然后发现函数体就是 `x` 本身。最终类型 `t0 -> t0` 捕捉了恒等函数的本质：它接受任何类型并返回相同类型。
 
-More complex function applications demonstrate how constraints propagate through the system. When we apply the identity function to the integer `42`, the unification process discovers that the type variable `t0` must be `Int`, yielding the final type `Int` for the entire expression.
+更复杂的函数应用展示了约束如何在系统中传播。当我们将恒等函数应用于整数 `42` 时，合一过程发现类型变量 `t0` 必须是 `Int`，从而为整个表达式得到最终类型 `Int`。
 
-## Let Polymorphism
+## Let 多态性
 
-Let expressions introduce one of the most  features of the Hindley-Milner type system: let-polymorphism. This mechanism allows variables bound in let expressions to be used with different types in different contexts, enabling flexible code reuse without sacrificing type safety.
+Let 表达式引入了 Hindley-Milner 类型系统中最具特色的特性之一：let 多态性。这种机制允许在 let 表达式中绑定的变量在不同的上下文中以不同的类型使用，从而在保证类型安全的同时实现灵活的代码复用。
 
-The classic example involves binding the identity function in a let expression and then using it with different types. Algorithm W generalizes the type of the bound expression by abstracting over type variables that don't appear free in the current environment. This generalization allows the same binding to be instantiated with fresh type variables at each use site.
+经典的例子是在 let 表达式中绑定恒等函数，然后将其用于不同的类型。Algorithm W 通过抽象化当前环境中不自由出现的类型变量，来推广绑定表达式的类型。这种推广允许相同的绑定在每个使用点以新鲜的类型变量进行实例化。
 
-Consider the expression `let f = \x -> x in (f 42, f true)`. First, Algorithm W infers that the identity function has type `t0 -> t0`. During generalization, since `t0` doesn't appear in the environment, the system treats this as a polymorphic type that can be instantiated differently at each use.
+考虑表达式 `let f = \x -> x in (f 42, f true)`。首先，Algorithm W 推断出恒等函数具有类型 `t0 -> t0`。在泛化过程中，由于 `t0` 不在环境中出现，系统将其视为一个多态类型，可以在每次使用时以不同方式进行实例化。
 
-When the algorithm encounters the first application `f 42`, it creates a fresh instance of the polymorphic type, say `t1 -> t1`, and unifies this with `Int -> t2` (where `t2` is the expected result type). This unification succeeds with `t1 = Int` and `t2 = Int`.
+当算法遇到第一个应用 `f 42` 时，它会为多态类型创建一个新鲜实例，比如 `t1 -> t1`，并将其与 `Int -> t2` 进行合一（其中 `t2` 是预期的结果类型）。这个合一成功，得到 `t1 = Int` 和 `t2 = Int`。
 
-For the second application `f true`, Algorithm W creates another fresh instance `t3 -> t3` and unifies this with `Bool -> t4`. This succeeds with `t3 = Bool` and `t4 = Bool`. The final result is a tuple type `(Int, Bool)`, demonstrating how the same function can be used polymorphically.
+对于第二个应用 `f true`，Algorithm W 创建另一个新鲜实例 `t3 -> t3`，并将其与 `Bool -> t4` 合一。这成功得到 `t3 = Bool` 和 `t4 = Bool`。最终结果是一个元组类型 `(Int, Bool)`，展示了相同的函数如何以多态方式使用。
 
-## Tuples
+## 元组
 
-Tuples provide a way to combine multiple values with potentially different types. Our Algorithm W implementation handles tuples by inferring the type of each component and combining them into a tuple type.
+元组提供了一种将多个可能具有不同类型的值组合在一起的方式。我们的 Algorithm W 实现通过推断每个组件的类型并将它们组合成元组类型来处理元组。
 
-The expression `(42, true)` demonstrates basic tuple construction. Algorithm W infers that the first component has type `Int` and the second has type `Bool`, yielding the tuple type `(Int, Bool)`. This extends naturally to nested tuples like `((1, 2), (true, false))` which receives type `((Int, Int), (Bool, Bool))`.
+表达式 `(42, true)` 展示了基本的元组构造。Algorithm W 推断第一个组件具有类型 `Int`，第二个组件具有类型 `Bool`，从而得到元组类型 `(Int, Bool)`。这自然扩展到嵌套元组，如 `((1, 2), (true, false))`，其类型为 `((Int, Int), (Bool, Bool))`。
 
-Tuples interact interestingly with polymorphism. The expression `let f = \x -> (x, x) in f 42` shows how a polymorphic function can construct tuples. The function `f` has type `t0 -> (t0, t0)`, creating a tuple where both components have the same type as the input. When applied to `42`, this yields type `(Int, Int)`.
+元组与多态性之间有有趣的相互作用。表达式 `let f = \x -> (x, x) in f 42` 展示了多态函数如何构造元组。函数 `f` 的类型为 `t0 -> (t0, t0)`，创建一个两个组件都与输入类型相同的元组。当应用于 `42` 时，得到类型 `(Int, Int)`。
 
-## Type Errors
+## 类型错误
 
-Algorithm W's constraint-based approach makes it excellent at detecting type errors and providing meaningful error messages. When unification fails, the algorithm can identify exactly where and why types are incompatible.
+Algorithm W 基于约束的方法使其非常擅长检测类型错误并提供有意义的错误消息。当合一失败时，算法可以精确地识别类型不兼容的位置和原因。
 
-Attempting to apply a non-function value like `42 true` generates a type error because the integer `42` has type `Int`, but function application requires an arrow type. The unification of `Int` with `Bool -> t0` fails, producing a clear error message.
+尝试将非函数值如 `42 true` 应用于某个值会产生类型错误，因为整数 `42` 具有类型 `Int`，但函数应用需要箭头类型。将 `Int` 与 `Bool -> t0` 进行合一失败，从而产生清晰的错误消息。
 
-More subtle errors arise from inconsistent uses of polymorphic functions. While Algorithm W handles let-polymorphism elegantly, it correctly rejects attempts to use functions in incompatible ways within the same scope.
+更微妙的错误来自于多态函数的不一致使用。虽然 Algorithm W 优雅地处理 let 多态性，但它正确地拒绝了在相同作用域中以不兼容方式使用函数的尝试。
 
-## Complex Inference Scenarios
+## 复杂推断场景
 
-Real-world programs often involve complex combinations of functions, applications, and data structures that test the full power of Algorithm W. These scenarios demonstrate how the algorithm handles intricate constraint propagation and substitution.
+现实世界中的程序通常涉及函数、应用和数据结构的复杂组合，这充分考验了 Algorithm W 的全部能力。这些场景展示了算法如何处理错综复杂的约束传播和替换。
 
-Higher-order functions provide particularly interesting examples. The expression `\f -> \x -> f (f x)` creates a function that applies another function twice. Algorithm W assigns fresh type variables and builds constraints that capture the relationships between all the types involved.
+高阶函数提供了特别有趣的例子。表达式 `\f -> \x -> f (f x)` 创建了一个将另一个函数应用两次的函数。Algorithm W 分配新鲜的类型变量并构建捕捉所有类型之间关系的约束。
 
-Let's trace through this inference process. The outer lambda receives a fresh parameter type `t0` for `f`. The inner lambda receives type `t1` for `x`. The application `f x` requires that `f` has type `t1 -> t2` for some fresh type `t2`. The outer application `f (f x)` then requires that `f` also has type `t2 -> t3` for the final result type `t3`.
+让我们逐步追踪这个推断过程。外层 lambda 为 `f` 接收一个新鲜参数类型 `t0`。内层 lambda 为 `x` 接收类型 `t1`。应用 `f x` 要求 `f` 具有类型 `t1 -> t2`，其中 `t2` 是某个新鲜类型。外层应用 `f (f x)` 要求 `f` 同时具有类型 `t2 -> t3`，其中 `t3` 是最终结果类型。
 
-Unification resolves these constraints by discovering that `t2 = t1` and the final type is `(t1 -> t1) -> t1 -> t1`. This captures the essence of function composition: given a function from some type to itself, produce a function that applies it twice.
+合一通过发现 `t2 = t1` 来解析这些约束，最终类型为 `(t1 -> t1) -> t1 -> t1`。这捕捉了函数组合的本质：给定一个从某类型到自身的函数，产生一个将其应用两次的函数。
 
-## The Y-Combinator
+## Y 组合子
 
-The Y-combinator represents a fundamental limitation of the Hindley-Milner type system. This famous fixed-point combinator cannot be typed in our system, illustrating an important boundary between what can be expressed with simple types and what requires more advanced type system features.
+Y 组合子代表了 Hindley-Milner 类型系统的一个基本限制。这个著名的定点组合子无法在我们的系统中进行类型检查，这说明了简单类型可以表达的内容与需要更高级类型系统特性之间的重要界限。
 
-The Y-combinator is defined as:
+Y 组合子定义为：
 
 ```bash
 $ cargo run -- "\\f -> (\\x -> f (x x)) (\\x -> f (x x))"
 Type inference error: Occurs check failed: variable 't2' occurs in type t2 → t4
 ```
 
-The failure occurs when attempting to type the self-application `x x`. When the type checker encounters this expression, it must assign the variable `x` a type that is simultaneously a function type (to be applied) and an argument type (to be passed to itself). This creates the constraint that some type variable `t` must equal `t → τ` for some type `τ`. The occurs check prevents this infinite type, ensuring the type system remains decidable and sound.
+当类型检查器遇到自我应用 `x x` 时，就会发生失败。在遇到这个表达式时，它必须为变量 `x` 分配一个同时是函数类型（用于被应用）和参数类型（用于传递给自身）的类型。这会产生一个约束：某个类型变量 `t` 必须等于 `t → τ`（对于某个类型 `τ`）。发生检查阻止了这种无限类型，确保类型系统保持可判定性和可靠性。
 
-This limitation is not a bug but a fundamental characteristic of the Hindley-Milner type system. The Y-combinator requires more advanced type system features such as recursive types or explicit fixed-point operators. Real functional programming languages typically provide built-in recursion constructs like `let rec` that are handled specially by the type checker, avoiding the need for explicit fixed-point combinators at the term level.
+这一限制并非缺陷，而是 Hindley-Milner 类型系统的一个基本特征。Y 组合子需要更高级的类型系统特性，例如递归类型或显式的定点算子。实际函数式编程语言通常提供内置的递归结构（如 `let rec`），这些结构由类型检查器特殊处理，从而避免了在项层级使用显式的定点组合子。
 
-The inability to type the Y-combinator illustrates an important trade-off in programming language design between expressiveness and decidability. While more powerful type systems exist that can handle self-application, they come at the cost of increased complexity and potentially undecidable type checking. Algorithm W chooses decidability and simplicity, making it practical for real programming languages while accepting certain expressiveness limitations.
+无法对 Y 组合子进行类型化揭示了编程语言设计中表达力与可判定性之间的一种重要权衡。虽然存在更强大的类型系统可以处理自我应用，但代价是复杂性增加以及类型检查可能不再可判定。算法 W 选择了可判定性和简洁性，使其在实际编程语言中具有实用性，同时接受了某些表达力上的限制。
 
-## Mutual Recursion
+## 相互递归
 
-Our Algorithm W implementation has a significant limitation: it does not support mutual recursion. Mutually recursive definitions occur when two or more functions call each other, creating a circular dependency that requires careful handling during type inference.
+我们的算法 W 实现有一个显著的限制：它不支持相互递归。当两个或多个函数相互调用时，就会产生相互递归定义，这会在类型推断期间形成循环依赖，需要谨慎处理。
 
-Consider this example that would fail in our implementation:
+考虑这个会在我们的实现中失败的例子：
 
 ```haskell
 let even = \n -> if n == 0 then true else odd (n - 1) in
@@ -87,20 +87,20 @@ let odd = \n -> if n == 0 then false else even (n - 1) in
 odd 5
 ```
 
-The problem is that when we encounter the definition of `even`, the function `odd` is not yet in scope, so the reference to `odd` in the body of `even` fails. Standard Algorithm W processes let-bindings sequentially, which makes mutual recursion impossible without additional machinery.
+问题在于，当我们遇到 `even` 的定义时，函数 `odd` 尚未进入作用域，因此 `even` 体中对 `odd` 的引用会失败。标准的算法 W 按顺序处理 let 绑定，这使得在没有额外机制的情况下无法实现相互递归。
 
-Supporting mutual recursion requires more techniques. The way you would normally do this is one of the following:
+支持相互递归需要更多技术。通常的解决方法之一如下：
 
-1. **Dependency Analysis**: The type checker must analyze the dependency graph of definitions to identify strongly connected components (groups of mutually recursive functions).
+1. **依赖分析**：类型检查器必须分析定义的依赖图，以识别强连通分量（相互递归的函数组）。
 
-2. **Simultaneous Inference**: All functions in a mutually recursive group must be typed together, typically by assigning fresh type variables to each function initially, then solving all constraints simultaneously.
+2. **同时推断**：相互递归组中的所有函数必须一同进行类型化，通常是通过最初为每个函数分配新的类型变量，然后同时求解所有约束。
 
-3. **Generalization Delays**: The generalization step (which introduces polymorphism) must be delayed until after all mutual dependencies are resolved.
+3. **泛化延迟**：泛化步骤（引入多态性）必须推迟到所有相互依赖都解析之后。
 
-These extensions significantly complicate the implementation and are beyond the scope of our simple Algorithm W demonstration.
+这些扩展显著复杂化了实现，超出了我们简单算法 W 演示的范围。
 
-## Performance (Or Lack Thereof)
+## 性能（或者说缺乏性能）
 
-While Algorithm W is theoretically elegant, practical implementations must consider performance characteristics. The algorithm's complexity depends on the size of expressions and the complexity of types involved. Most real programs involve relatively simple type constraints that Algorithm W handles efficiently.
+虽然算法 W 在理论上很优雅，但实际实现必须考虑性能特征。该算法的复杂度取决于表达式的大小和所涉及类型的复杂度。大多数真实程序涉及相对简单的类型约束，算法 W 能够高效处理。
 
-Our implementation demonstrates the core algorithms without the optimizations found in production compilers. Industrial-strength implementations often employ techniques like type-directed compilation, constraint caching, and incremental type checking to handle large codebases efficiently.
+我们的实现展示了核心算法，但没有采用生产级编译器中的优化。工业级的实现通常采用诸如类型导向编译、约束缓存和增量类型检查等技术，以高效处理大型代码库。

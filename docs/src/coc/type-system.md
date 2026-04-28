@@ -1,136 +1,136 @@
-# Type System
+# 类型系统
 
-Our Calculus of Constructions implementation centers around a  type system that unifies terms, types, and kinds into a single syntactic framework. The implementation demonstrates how dependent types, universe polymorphism, and definitional equality work together to create a practical dependently-typed programming language.
+我们的构造演算（Calculus of Constructions）实现围绕着一个统一的类型系统展开，该系统将项、类型和种类合并到单一的语法框架中。该实现展示了依赖类型、宇宙多态和定义相等如何协同工作，构建一个实用的依赖类型编程语言。
 
-## AST Design and Term Language
+## AST 设计与项语言
 
-The core of our implementation lies in the unified term language that represents all syntactic categories within a single AST structure. This design reflects the CoC principle that terms, types, and kinds are all inhabitants of the same computational universe.
+实现的核心在于统一的项语言，它用单一的 AST 结构表示所有语法范畴。这一设计体现了 CoC 的原则：项、类型和种类都是同一计算宇宙中的居民。
 
 ```rust
 #![enum!("coc/src/ast.rs", Term)]
 ```
 
-Our `Term` enum demonstrates the unification principle by using the same constructors to represent functions (`Abs`), function types (`Pi`), type constructors, and logical propositions. The same application constructor (`App`) represents both function application and type application, eliminating the artificial boundaries present in stratified type systems.
+我们的 `Term` 枚举通过使用相同的构造子来表示函数（`Abs`）、函数类型（`Pi`）、类型构造子和逻辑命题，体现了统一原则。相同的应用构造子（`App`）既表示函数应用，也表示类型应用，消除了分层类型系统中的人为界限。
 
-Variables (`Var`) and constants (`Const`) form the basic building blocks of our term language. Variables represent both term-level bindings and type-level bindings, while constants refer to defined names in the global context. The implementation treats both categories uniformly, enabling the same binding mechanisms to work across all abstraction levels.
+变量（`Var`）和常量（`Const`）构成了项语言的基本构建块。变量既表示项层次的绑定，也表示类型层次的绑定；而常量则引用全局上下文中的已定义名称。实现统一处理这两类绑定，使得相同的绑定机制能够跨越所有抽象层次工作。
 
-### Function Types and Lambda Abstractions
+### 函数类型与 Lambda 抽象
 
-The `Pi` constructor represents dependent product types, generalizing both simple function types and universal quantification. When the bound variable appears in the body type, we obtain dependency; when it does not appear, the Pi-type reduces to a simple function type.
+`Pi` 构造子表示依赖积类型，它泛化了简单函数类型和全称量词。当绑定变量出现在体类型中时，便获得依赖；当它不出现时，Pi 类型退化为简单函数类型。
 
 ```rust
-// Pi(variable_name, domain_type, codomain_type, is_implicit)
+// Pi(变量名, 定义域类型, 值域类型, 是否隐式)
 Pi("x".to_string(), Box::new(nat_type), Box::new(vec_type), false)
 ```
 
-The boolean flag indicates whether the parameter should be treated as implicit, enabling our implementation to support both explicit and implicit argument passing. Lambda abstractions (`Abs`) create inhabitants of Pi-types, with the same constructor serving for both computational functions and proof terms.
+布尔标志指示该参数是否应被视为隐式参数，使我们的实现能够同时支持显式和隐式参数传递。Lambda 抽象（`Abs`）创建 Pi 类型的居民，相同的构造子既服务于计算函数，也服务于证明项。
 
-### Pattern Matching and Inductive Elimination
+### 模式匹配与归纳消除
 
 ```rust
 #![struct!("coc/src/ast.rs", MatchArm)]
 ```
 
-Our implementation includes comprehensive pattern matching through the `Match` constructor, which enables elimination of inductive types. Each match arm specifies a constructor pattern and the corresponding elimination term, providing the computational content needed for inductive reasoning.
+我们的实现通过 `Match` 构造子支持全面的模式匹配，用于消除归纳类型。每个匹配分支指定一个构造子模式和对应的消除项，为归纳推理提供计算内容。
 
-The pattern matching implementation supports nested patterns and variable bindings, enabling  destructions of complex inductive data structures while maintaining type safety through exhaustiveness checking.
+模式匹配实现支持嵌套模式和变量绑定，能够解构复杂的归纳数据结构，同时通过穷尽性检查维护类型安全。
 
-## Universe System Implementation
+## 宇宙系统实现
 
-The implementation includes a comprehensive universe system that prevents logical paradoxes while enabling flexible type-level computation. Our universe design supports both concrete levels and polymorphic universe variables.
+实现包含一个全面的宇宙系统，用于防止逻辑悖论，同时支持灵活的类型层次计算。我们的宇宙设计同时支持具体层次和多态宇宙变量。
 
 ```rust
 #![enum!("coc/src/ast.rs", Universe)]
 ```
 
-### Universe Levels and Arithmetic
+### 宇宙层次与算术
 
-The universe system supports multiple forms of universe expressions that enable both concrete level specifications and polymorphic universe computations. Concrete levels represented by `Const(n)` specify particular universe levels like `Type 0`, `Type 1`, and so forth, forming the foundation of the universe hierarchy and providing definite homes for specific types. Universe variables through `ScopedVar` enable universe polymorphism by allowing definitions to be parameterized over universe levels, permitting the same definition to work at multiple universe levels simultaneously. Level arithmetic operations using `Add` enable universe level computations such as `u + 1`, supporting common patterns where a type constructor must live at a universe level one higher than its parameter. Maximum operations provided by `Max` and `IMax` compute universe level selections that choose the higher of two levels, with `IMax` implementing the impredicative maximum used in proof-relevant contexts where the universe level computation must respect the logical structure of the proof.
+宇宙系统支持多种形式的宇宙表达式，既允许具体层次规格说明，也支持多态宇宙计算。具体层次由 `Const(n)` 表示，指定特定的宇宙层次，如 `Type 0`、`Type 1` 等，构成宇宙层次结构的基础，为具体类型提供确定的层级。宇宙变量通过 `ScopedVar` 实现多态，允许定义参数化在宇宙层次上，使同一定义可同时在多个宇宙层次上工作。通过 `Add` 实现的层次算术运算支持宇宙层次计算，如 `u + 1`，适用于类型构造子必须位于比其参数高一个宇宙层次的常见模式。`Max` 和 `IMax` 提供的最大值运算计算选择两个层次中较高者的宇宙层次选择，其中 `IMax` 实现了用于证明相关上下文的谓词性最大值，此时宇宙层次计算须尊重证明的逻辑结构。
 
-### Universe Constraint Solving
+### 宇宙约束求解
 
 ```rust
 #![enum!("coc/src/ast.rs", UniverseConstraint)]
 ```
 
-Our implementation includes a dedicated universe constraint solver that handles the complex relationships between universe levels. The solver maintains a constraint graph and applies  algorithms to determine consistent universe level assignments. The constraint solver manages level equality constraints that require two universe levels to be identical, arising from type equality requirements in dependent contexts where definitional equality demands universe level consistency. Level ordering constraints require one universe level to be strictly less than another, arising from the predicativity requirements of the type system that prevent logical paradoxes by maintaining a strict hierarchy of type universes. Arithmetic constraints involving universe level computations enable flexible universe level expressions while maintaining consistency, allowing complex universe polymorphic definitions to specify their universe requirements precisely through level arithmetic expressions that the solver can resolve to concrete level assignments.
+我们的实现包含一个专门的宇宙约束求解器，用于处理宇宙层次之间的复杂关系。求解器维护一个约束图，并应用算法来确定一致的宇宙层次赋值。约束求解器管理层次等式约束，要求两个宇宙层次相同，这些约束源于依赖上下文中的类型相等需求，其中定义相等要求宇宙层次一致。层次顺序约束要求一个宇宙层次严格小于另一个，源于类型系统的谓词性要求，通过维护严格的类型宇宙层次来防止逻辑悖论。涉及宇宙层次计算的算术约束支持灵活的宇宙层次表达式，同时保持一致性，使复杂的宇宙多态定义能够通过层次算术表达式精确指定其宇宙需求，而求解器可将其解析为具体的层次赋值。
 
-## Definitional Equality and Normalization
+## 定义相等与规范化
 
-Our type checker implements definitional equality through a comprehensive normalization algorithm that handles β-reduction, η-expansion, and definitional unfolding of constant definitions.
+我们的类型检查器通过全面的规范化算法实现定义相等，该算法处理 β-归约、η-展开以及常量定义的展开。
 
 ```rust
 #![function!("coc/src/typecheck.rs", TypeChecker::normalize)]
 ```
 
-The normalization algorithm implements β-reduction for function applications, handling both computational reductions and type-level computations. When a lambda abstraction is applied to an argument, the implementation performs substitution while carefully managing variable capture and scope.
+规范化算法实现函数应用的 β-归约，同时处理计算归约和类型层次的计算。当 lambda 抽象应用于参数时，实现执行替换，同时小心管理变量捕获和作用域。
 
 \\[ (λx : Nat. x + 1) \\ 5  ⟹  5 + 1  ⟹  6 \\]
 
-The implementation extends β-reduction to handle dependent type computations, where type-level functions can be applied to produce new types through computation.
+实现扩展了 β-归约以处理依赖类型计算，其中类型层次的函数可被应用以通过计算产生新类型。
 
-### Eta Conversion
+### Eta 转换
 
-Eta conversion ensures that functions are equal to their eta-expanded forms, providing extensional equality for function types. The implementation applies η-expansion during normalization to ensure that definitionally equal terms are recognized as such.
+Eta 转换确保函数与其 eta 展开形式相等，为函数类型提供外延相等。实现期间，规范化会应用 η-展开以确保定义相等的项被识别为相等。
 
-\\[ λx : A. f \\ x  ≡  f \\text{ (when } x \\notin \\text{fv}(f)\\text{)} \\]
+\\[ λx : A. f \\ x  ≡  f \\text{（当 } x \\notin \\text{fv}(f)\\text{）} \\]
 
-### Let-Expansion and Definition Unfolding
+### Let-展开与定义展开
 
-The implementation handles `let` bindings through expansion, replacing let-bound variables with their definitions during normalization. This approach ensures that local definitions do not interfere with definitional equality while providing the computational content needed for type checking.
+实现通过对 `let` 绑定进行展开来处理它们，在规范化期间用定义替换 let 绑定的变量。这种方法确保局部定义不干扰定义相等，同时为类型检查提供所需的计算内容。
 
-Definition unfolding enables the type checker to access the computational content of defined constants, allowing definitional equality to work across module boundaries and enabling powerful abstraction mechanisms.
+定义展开允许类型检查器访问已定义常量的计算内容，使定义性等式能够跨越模块边界工作，并支持强大的抽象机制。
 
-## Type Checking Algorithm
+## 类型检查算法
 
-Our implementation employs bidirectional type checking that splits the type checking problem into synthesis and checking modes. This approach handles the complexity of dependent types while maintaining decidability and providing informative error messages.
+我们的实现采用双向类型检查，将类型检查问题拆分为综合模式和检查模式。这种方法处理了依赖类型的复杂性，同时保持了可判定性，并提供了信息丰富的错误消息。
 
 ```rust
 #![function!("coc/src/typecheck.rs", TypeChecker::infer)]
 ```
 
-### Type Synthesis
+### 类型综合
 
-The synthesis algorithm determines the type of a term by analyzing its structure and propagating type information through the syntax tree. Variable lookup operates by consulting the typing context, which maintains bindings for both term variables and type variables, ensuring that each variable reference corresponds to a valid binding in the current scope. Function application typing proceeds by synthesizing the function type, ensuring it forms a Pi-type, and checking that the argument type matches the domain specification, with careful handling of dependent types where the codomain may depend on the specific argument value. Pi-type formation verification ensures both the domain and codomain are well-typed, with the codomain checked in a context extended with the bound variable to properly handle the dependency relationship between the domain and codomain types.
+综合算法通过分析项的结构并沿语法树传播类型信息来确定项的类型。变量查找通过查询类型上下文进行，该上下文维护项变量和类型变量的绑定，确保每个变量引用对应于当前作用域中的有效绑定。函数应用的类型综合通过综合函数类型进行，确保其形成Pi类型，并检查参数类型是否匹配域规范，同时谨慎处理依赖类型——其中余域可能依赖于特定参数值。Pi类型形成验证确保域和余域都是良好类型的，余域在扩展了绑定变量的上下文中检查，以正确处理域和余域类型之间的依赖关系。
 
 ```rust
 #![function!("coc/src/typecheck.rs", TypeChecker::check)]
 ```
 
-### Type Checking Mode
+### 类型检查模式
 
-The checking algorithm verifies that a term has an expected type by comparing the term structure with the type structure. This mode often provides better error messages and more efficient checking for terms with complex dependent types. Lambda checking operates by verifying lambda abstractions against Pi-types, ensuring that the body has the correct type in the extended context where the lambda parameter is properly bound. When synthesis and checking produce different results, the algorithm falls back to definitional equality checking, normalizing both the synthesized and expected types to their canonical forms and comparing the results, enabling the type checker to recognize when terms are definitionally equal despite having different syntactic representations.
+检查算法通过比较项结构与类型结构来验证项是否具有期望的类型。此模式通常为具有复杂依赖类型的项提供更好的错误消息和更高效的检查。Lambda检查通过验证lambda抽象是否符合Pi类型来工作，确保在扩展了lambda参数正确绑定的上下文中，函数体具有正确的类型。当综合和检查结果不同时，算法回退到定义性等式检查，将综合类型和预期类型都规范化到其规范形式并进行比较，使类型检查器能够识别出即使句法表示不同但在定义上等价的项。
 
-### Context Management
+### 上下文管理
 
 ```rust
 #![struct!("coc/src/context.rs", Context)]
 ```
 
-The typing context maintains bindings for variables, definitions, axioms, and constructors. Our implementation uses a  context structure that enables efficient lookup while supporting the complex scoping rules required for dependent types. Variable binding operations add new variable bindings with their types, enabling proper scoping in lambda abstractions and Pi-types where the bound variable may appear in the type of subsequent bindings. Definition extension capabilities allow adding new constant definitions with their types and bodies, enabling modular development and abstraction mechanisms that support large-scale program organization. Constructor registration functionality registers inductive type constructors with their types, enabling pattern matching and inductive reasoning that respects the structural properties of the data types and maintains type safety throughout elimination operations.
+类型上下文维护变量、定义、公理和构造子的绑定。我们的实现使用一种上下文结构，支持高效查找，同时处理依赖类型所需的复杂作用域规则。变量绑定操作添加新的变量绑定及其类型，以便在lambda抽象和Pi类型中实现正确的作用域——其中绑定变量可能出现在后续绑定的类型中。定义扩展能力允许添加新的常量定义及其类型和主体，支持模块化开发和抽象机制，促进大规模程序组织。构造子注册功能注册归纳类型的构造子及其类型，从而实现模式匹配和归纳推理，尊重数据类型的结构性质，并在整个消去操作中维护类型安全。
 
-## Implicit Arguments and Elaboration
+## 隐式参数与细化
 
-Our implementation includes comprehensive support for implicit arguments that are automatically inferred by the type checker. This feature bridges the gap between the fully explicit internal representation and the more convenient surface syntax.
+我们的实现包含对隐式参数的全面支持，这些参数由类型检查器自动推断。此功能弥合了完全显式的内部表示与更方便的表面语法之间的差距。
 
 ```rust
 #![function!("coc/src/typecheck.rs", TypeChecker::elaborate_implicit_parameters)]
 ```
 
-### Implicit Argument Insertion
+### 隐式参数插入
 
-The type checker automatically inserts implicit arguments when encountering function applications where the function type has implicit parameters. Meta-variable generation creates fresh meta-variables to represent unknown implicit arguments, ensuring that each implicit parameter has a unique placeholder that can be resolved through subsequent constraint solving. Constraint collection gathers relationships that connect meta-variables to known type information, building a system of equations that captures the interdependencies between implicit arguments and the explicitly provided terms. Constraint solving employs the dedicated constraint solver to determine concrete values for meta-variables, using unification algorithms and type-directed search to find solutions that satisfy all accumulated constraints while respecting the type structure of the program.
+当遇到函数类型具有隐式参数的函数应用时，类型检查器会自动插入隐式参数。元变量生成创建新的元变量来表示未知的隐式参数，确保每个隐式参数都有一个唯一的占位符，可通过后续约束求解来解析。约束收集建立连接元变量与已知类型信息的关系，构建一个方程组，捕捉隐式参数与显式提供项之间的相互依赖关系。约束求解使用专用的约束求解器来确定元变量的具体值，采用统一算法和类型导向搜索来找到满足所有累积约束的解，同时尊重程序的类型结构。
 
-### Meta-variable Resolution
+### 元变量解析
 
 ```rust
 #![struct!("coc/src/solver.rs", MetaInfo)]
 ```
 
-Meta-variables represent unknown terms that get resolved through unification and constraint solving. Our implementation tracks meta-variable dependencies and applies  solving algorithms to determine unique solutions when possible.
+元变量表示未知项，通过统一和约束求解来解析。我们的实现跟踪元变量依赖关系，并应用求解算法，在可能时确定唯一解。
 
-## Takeaways
+## 要点
 
-The Calculus of Constructions represents a unique convergence of computational and logical capabilities that distinguishes it from other type systems. The fundamental characteristic that sets CoC apart is its unification of terms, types, and kinds within a single syntactic framework, eliminating the artificial stratification found in traditional type systems. This unification enables unprecedented expressiveness where types can depend on computational values, creating a system where mathematical specifications and their implementations coexist naturally within the same linguistic framework.
+构造演算代表了计算能力和逻辑能力的独特融合，这使其区别于其他类型系统。使CoC与众不同的基本特征是其将项、类型和种类统一在单个句法框架内，消除了传统类型系统中所见的人为分层。这种统一实现了前所未有的表达能力——类型可以依赖于计算值，创造了一个数学规范与其实现自然共存于同一语言框架中的系统。
 
-The definitional equality mechanism provides computational content to the type system through β-reduction, η-conversion, and definition unfolding, creating a rich equational theory that recognizes when different syntactic expressions represent the same computational object. This equality extends beyond simple syntactic matching to include semantic equivalence, enabling the type checker to recognize mathematical identities and computational transformations automatically. The normalization algorithm ensures that definitional equality checking remains decidable while providing the computational power needed for type-level computations.
+定义性等式机制通过β-归约、η-转换和定义展开为类型系统提供计算内容，创建了一个丰富的等式理论，能够识别不同的句法表达式是否代表相同的计算对象。这种等式超越了简单的句法匹配，包含语义等价性，使类型检查器能够自动识别数学恒等式和计算变换。归一化算法确保定义性等式检查保持可判定性，同时为类型级计算提供所需的计算能力。

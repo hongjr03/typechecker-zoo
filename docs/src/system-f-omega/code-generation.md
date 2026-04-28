@@ -1,68 +1,68 @@
-# Code Generation
+# 代码生成
 
-This section is optional, but we'd like to explore a little bit how we can go from high-level lambda calculus (i.e. System F) all the way down to executable machine code requires several transformations that preserve the semantics of our programs while adapting them to the realities of modern CPU architectures.
+本节是可选的，但我们想稍微探讨一下如何从高级 lambda 演算（即 System F）一直向下到可执行的机器代码。这需要经过几个转换，这些转换在保持程序语义的同时，使其适应现代 CPU 架构的现实。
 
-We're going to build a minimalist generation pipeline that transforms our typed functional programs into imperative machine code through three major phases:
+我们将构建一个极简的生成管道，通过三个主要阶段将类型化的函数式程序转换为命令式机器代码：
 
-* **Type erasure** First we removes the type information that guided our type checking
-* **Closure conversion** Second we make the implicit environment capture of nested functions explicit
-* **Code generation** Finally our code generation framework (in our case Cranelift) generates optimized machine code for the target architecture from our closure converted code.
+* **类型擦除**：首先，我们移除用于指导类型检查的类型信息。
+* **闭包转换**：其次，我们将嵌套函数的隐式环境捕获显式化。
+* **代码生成**：最后，我们的代码生成框架（此处为 Cranelift）根据闭包转换后的代码为目标架构生成优化的机器代码。
 
-## Choosing a Code Generation Backend
+## 选择代码生成后端
 
-Before diving into our implementation, we should understand why we chose Cranelift as our code generation backend. When implementing a compiler, you face a fundamental choice about how to generate executable code, each with distinct tradeoffs.
+在深入实现之前，我们应该理解为什么选择 Cranelift 作为代码生成后端。实现编译器时，你会面临关于如何生成可执行代码的基本选择，每个选择都有不同的权衡。
 
-**Bespoke Backend**: The most educational approach involves directly emitting assembly instructions for your target architecture. This gives you complete control and deep understanding of the machine, but requires implementing register allocation, instruction selection, and optimization passes from scratch. For production compilers targeting multiple architectures, this quickly becomes intractable. You would need to understand the intricacies of x86-64, ARM64, RISC-V, and other instruction sets, along with their calling conventions and performance characteristics. This can be a non-trivial project.
+**定制后端**：最具教学意义的方法是直接为目标架构发出汇编指令。这让你拥有完全的控制权和对机器的深入理解，但需要从头实现寄存器分配、指令选择和优化过程。对于针对多个架构的生产环境编译器，这很快就变得不可行。你需要理解 x86-64、ARM64、RISC-V 等指令集的 intricacies，以及它们的调用约定和性能特征。这可能是一个不小的项目。
 
-**Virtual Machine Approach**: Many languages choose to compile to bytecode for a custom virtual machine. Over the decades, numerous specialized VMs have been developed for functional languages:
+**虚拟机方法**：许多语言选择为自定义虚拟机编译为字节码。几十年来，人们为函数式语言开发了许多专门的虚拟机：
 
-| VM | Languages | Key Features | Evaluation |
+| 虚拟机 | 语言 | 关键特性 | 评估 |
 |---|---|---|---|
-| [SECD](https://en.wikipedia.org/wiki/SECD_machine) | ML, Scheme | Stack-based, formal basis | Call-by-value |
-| [CEK](https://en.wikipedia.org/wiki/CEK_Machine) | Scheme, Racket | Control/environment/continuation | Call-by-value |
-| [Krivine](https://en.wikipedia.org/wiki/Krivine_machine) | OCaml | De Bruijn indices, minimal | Call-by-name |
-| STG | Haskell | Lazy graph reduction, closures, parallelism | Call-by-need |
-| ZINC | OCaml | Efficient currying, stack/env/closure | Call-by-value |
-| JVM | Scala, Clojure, Kotlin, Eta | Closures, immutable structures, concurrency | Configurable |
-| BEAM | Erlang, Elixir | Concurrency, hot swapping, lightweight processes | Strict |
-| FLVM | Curry | Functional logic, non-determinism, pools | Mixed |
-| Uxn | Funktal | Minimalism, 8-bit opcodes, functional core | Custom |
+| [SECD](https://en.wikipedia.org/wiki/SECD_machine) | ML, Scheme | 基于栈，形式基础 | 按值调用 |
+| [CEK](https://en.wikipedia.org/wiki/CEK_Machine) | Scheme, Racket | 控制/环境/续延 | 按值调用 |
+| [Krivine](https://en.wikipedia.org/wiki/Krivine_machine) | OCaml | 德布鲁因索引，最小化 | 按名调用 |
+| STG | Haskell | 惰性图归约，闭包，并行性 | 按需调用 |
+| ZINC | OCaml | 高效柯里化，栈/环境/闭包 | 按值调用 |
+| JVM | Scala, Clojure, Kotlin, Eta | 闭包，不可变结构，并发 | 可配置 |
+| BEAM | Erlang, Elixir | 并发，热替换，轻量进程 | 严格 |
+| FLVM | Curry | 函数逻辑，非确定性，池 | 混合 |
+| Uxn | Funktal | 极简主义，8位操作码，函数核心 | 自定义 |
 
-This approach provides excellent portability and simplifies the compiler, but sacrifices performance due to interpretation overhead. Even with just-in-time compilation, the VM approach typically cannot match native code performance for compute-intensive tasks.
+这种方法提供了极佳的可移植性并简化了编译器，但会因解释开销而牺牲性能。即使采用即时编译，虚拟机方法通常也无法在计算密集型任务中匹敌本地代码的性能。
 
-**LibJIT**: Libraries like LibJIT provide a middle ground, offering a simple API for generating machine code without building a full compiler backend. These work well for domain-specific languages and embedded scripting, but typically lack sophisticated optimizations and broad architecture support. They excel at simplicity but plateau quickly in terms of performance.
+**LibJIT**：像 LibJIT 这样的库提供了一种折中方案，提供了一个简单的 API 来生成机器代码，而无需构建完整的编译器后端。这些库适用于领域特定语言和嵌入式脚本，但通常缺乏复杂的优化和广泛的架构支持。它们以简单性著称，但在性能方面很快会遇到瓶颈。
 
-**LLVM**: The dominant choice for production compilers, LLVM provides industrial-strength optimization passes and supports virtually every architecture. Rust, Swift, and Clang all use LLVM. However, LLVM's comprehensiveness comes with significant costs: massive binary sizes (hundreds of megabytes), slow compilation times, and a complex C++ API that requires deep expertise. LLVM's optimization passes, while extremely powerful, can take longer than the rest of your compiler combined. There are good Rust bindings in the [inkwell](https://thedan64.github.io/inkwell/inkwell/index.html) crate.
+**LLVM**：作为生产编译器的主导选择，LLVM 提供了工业级的优化通道并支持几乎所有架构。Rust、Swift 和 Clang 都使用 LLVM。然而，LLVM 的全面性带来了巨大的成本：庞大的二进制体积（数百兆）、缓慢的编译时间以及需要深厚专业知识的复杂 C++ API。LLVM 的优化通道虽然极其强大，但其运行时间可能比编译器其余部分的总和还要长。在 [inkwell](https://thedan64.github.io/inkwell/inkwell/index.html) crate 中有优秀的 Rust 绑定。
 
-**MLIR**: Multi-Level Intermediate Representation is like a higher-level LLVM, which extends LLVM with better support for domain-specific optimizations and heterogeneous computing (think GPUs). While powerful for machine learning compilers and specialized domains, MLIR adds even more complexity than LLVM and is still fairly early and undocumented (although I've tired [somewhat to remedy that](https://www.stephendiehl.com/posts/mlir_introduction/)). There are excellent Rust bindings in [melior](https://mlir-rs.github.io/melior/melior/) crate.
+**MLIR**：多层中间表示类似于更高级的 LLVM，它扩展了 LLVM，更好地支持领域特定优化和异构计算（例如 GPU）。虽然对于机器学习编译器和专业领域非常强大，但 MLIR 比 LLVM 增加了更多的复杂性，并且仍然相当早期且文档不足（尽管我尝试 [稍作弥补](https://www.stephendiehl.com/posts/mlir_introduction/)）。在 [melior](https://mlir-rs.github.io/melior/melior/) crate 中有优秀的 Rust 绑定。
 
-**Cranelift**: Originally designed for WebAssembly, Cranelift occupies a sweet spot for language experimentation. It generates good quality code quickly, has a clean Rust API, produces small binaries, and supports the major architectures (x86-64, ARM64). While it cannot match LLVM's peak optimization quality, Cranelift compiles code an order of magnitude faster. For a teaching compiler where iteration speed and code clarity matter more than squeezing out the last 10% of performance, Cranelift is awesome.
+**Cranelift**：最初为 WebAssembly 设计，Cranelift 在语言实验中占据了最佳位置。它快速生成高质量代码，具有简洁的 Rust API，生成较小的二进制文件，并支持主要架构（x86-64、ARM64）。虽然无法达到 LLVM 的峰值优化质量，Cranelift 的编译速度却快一个数量级。对于教学编译器而言，迭代速度和代码清晰度比压榨最后 10% 的性能更为重要，Cranelift 简直是太棒了。
 
-We're going to use Cranelift, because it's simple and uses the Rust build system with no external dependencies. It also has a clean API and compiles quickly, making it ideal for experimentation and learning. But our approach would work  with any of these backends ... only the final code generation phase would change if you choose a different backend.
+我们将使用 Cranelift，因为它简单并且使用 Rust 构建系统，没有外部依赖。它还拥有干净的 API 并且编译快速，非常适合实验和学习。但我们的方法适用于上述任何后端……如果选择不同的后端，只有最终的代码生成阶段会改变。
 
-## Type Erasure
+## 类型擦除
 
-System Fω's type system serves its purpose during type checking, ensuring program correctness and enabling powerful abstractions. But as we discussed before types exist purely for compile-time verification and carry no computational content at runtime. The type erasure phase strips away all type information, leaving only the essential computational structure.
+System Fω 的类型系统在类型检查期间发挥了作用，确保程序正确性并支持强大的抽象。但正如我们之前讨论的，类型仅存在于编译时验证，在运行时不携带任何计算内容。类型擦除阶段剥离所有类型信息，只留下基本的计算结构。
 
 ```rust
 #![enum!("system-f-omega/src/codegen/erase.rs", Erased)]
 ```
 
-The erased representation captures the essence of computation without types. Variables become simple names, lambda abstractions lose their type annotations, and applications remain as the fundamental operation of function invocation. Integer literals and binary operations pass through unchanged, as they represent actual runtime computations. Critically, type abstractions and type applications vanish entirely during erasure, as they exist solely to guide type checking.
+擦除后的表示在不使用类型的情况下捕获了计算的本质。变量变为简单名称，lambda 抽象失去其类型注解，应用仍然作为函数调用的基本操作。整数字面量和二元运算保持不变，因为它们表示实际的运行时计算。关键的是，类型抽象和类型应用在擦除期间完全消失，因为它们仅用于指导类型检查。
 
 ```rust
 #![function!("system-f-omega/src/codegen/erase.rs", erase)]
 ```
 
-The erasure algorithm traverses the typed abstract syntax tree and systematically removes all type information. Lambda abstractions lose their parameter type annotations, becoming untyped functions that operate solely on runtime values. Type abstractions disappear entirely, with only their bodies remaining, since type parameters have no runtime representation. Type applications similarly vanish, as they merely instantiate type variables that no longer exist after erasure.
+擦除算法遍历类型化的抽象语法树，并系统地移除所有类型信息。Lambda 抽象丢失其参数类型注解，变为仅对运行时值进行操作的无类型函数。类型抽象完全消失，只保留其主体，因为类型参数没有运行时表示。类型应用同样消失，因为它们仅仅实例化擦除后不再存在的类型变量。
 
-This phase demonstrates a fundamental principle of type systems: types are a compile-time discipline that ensures program correctness without imposing runtime overhead. The erased program retains exactly the computational content of the original while shedding the scaffolding that ensured its correctness.
+本阶段展示了类型系统的一个基本原则：类型是一种编译时约束，用于确保程序正确性而不引入运行时开销。擦除后的程序保留了原始程序的全部计算内容，同时去掉了用于保证其正确性的支撑结构。
 
-## Closure Conversion
+## 闭包转换
 
-Functional languages allow functions to be defined within other functions, creating nested scopes where inner functions can reference variables from enclosing scopes. This natural programming style poses a challenge for compilation to machine code, where functions are typically compiled to fixed addresses with no implicit access to their defining environment.
+函数式语言允许在函数内部定义其他函数，从而创建嵌套作用域，内部函数可以引用外部作用域的变量。这种自然的编程风格在编译为机器码时会遇到挑战，因为函数通常被编译为固定地址，且无法隐式访问其定义时的环境。
 
-Consider this simple example of a function that creates an adder:
+考虑一个创建加法器的简单示例：
 
 ```haskell
 makeAdder :: Int -> (Int -> Int);
@@ -72,254 +72,253 @@ add5 :: Int -> Int;
 add5 = makeAdder 5;
 ```
 
-The inner lambda `λy. x + y` references the variable `x` from its enclosing scope. When `makeAdder` returns this function, the value of `x` must somehow be preserved so that when `add5` is later called with an argument, it still has access to the value `5` that was passed to `makeAdder`.
+内部 lambda `λy. x + y` 引用了其外部作用域的变量 `x`。当 `makeAdder` 返回这个函数时，`x` 的值必须以某种方式被保留，以便稍后调用 `add5` 时，它仍能访问传递给 `makeAdder` 的值 `5`。
 
-In traditional assembly language or C, functions are just code addresses with no associated data. A function like `add` would be compiled to a fixed location in memory:
+在传统的汇编语言或 C 语言中，函数只是代码地址，没有关联的数据。像 `add` 这样的函数会被编译到内存中的固定位置：
 
 ```
 add_function:
-    ; expects two arguments in registers
-    ; adds them and returns result
+    ; 期望两个参数在寄存器中
+    ; 将它们相加并返回结果
 ```
 
-But our `add5` function needs to remember that `x = 5`. This is where closure conversion comes in.
+但我们的 `add5` 函数需要记住 `x = 5`。这就是闭包转换发挥作用的地方。
 
-Closure conversion solves this problem by transforming every function into a pair of a code pointer and an environment containing captured values. The transformation makes environment capture explicit by:
+闭包转换通过将每个函数转换为一个代码指针和一个包含捕获值的环境组成的数据对来解决这个问题。该转换通过以下步骤使环境捕获显式化：
 
-1. Identifying free variables in each function (variables used but not defined locally)
-2. Creating an environment structure to hold these captured values
-3. Rewriting functions to take an extra parameter (the closure) and extract captured values from it
-4. Transforming function calls to pass both the closure and the regular argument
+1. 识别每个函数中的自由变量（被使用但未在本地定义的变量）
+2. 创建用于容纳这些捕获值的环境结构
+3. 重写函数，使其接受一个额外参数（闭包），并从中提取捕获的值
+4. 转换函数调用，使其同时传递闭包和常规参数
 
-After closure conversion, our example becomes something like:
+经过闭包转换后，我们的示例变为：
 
 ```
-// Original: λy. x + y where x is free
-// Converted: λ(closure, y). project(closure, 0) + y
+// 原始：λy. x + y，其中 x 是自由的
+// 转换后：λ(closure, y). project(closure, 0) + y
 
-// Creating add5:
-// 1. Allocate closure: [code_ptr=add_function, env=[5]]
-// 2. Return this closure
+// 创建 add5：
+// 1. 分配闭包：[code_ptr=add_function, env=[5]]
+// 2. 返回该闭包
 
-// Calling add5(3):
-// 1. Extract code pointer from closure
-// 2. Call code_ptr(closure, 3)
-// 3. Inside function: project(closure, 0) gives us 5
-// 4. Return 5 + 3 = 8
+// 调用 add5(3)：
+// 1. 从闭包中提取代码指针
+// 2. 调用 code_ptr(closure, 3)
+// 3. 在函数内部：project(closure, 0) 得到 5
+// 4. 返回 5 + 3 = 8
 ```
 
-This transformation turns the implicit variable capture of nested functions into explicit data structures that can be allocated and manipulated at runtime.
-
+这一转换将嵌套函数的隐式变量捕获变为可在运行时分配和操作的显式数据结构。
 
 ```rust
 #![enum!("system-f-omega/src/codegen/closure.rs", Closed)]
 ```
 
-The closed representation introduces several new constructs that make environment manipulation explicit. The `MakeClosure` construct creates a closure by pairing a function identifier with its captured environment. The `Proj` construct extracts values from a closure's environment using positional indices. The `Call` construct invokes a closure by passing both the closure itself and the argument.
+闭包表示引入了几个新的构造，使环境操作更加显式。`MakeClosure` 构造通过将函数标识符与其捕获的环境配对来创建闭包。`Proj` 构造使用位置索引从闭包的环境中提取值。`Call` 构造通过同时传递闭包和参数来调用闭包。
 
 ```rust
 #![struct!("system-f-omega/src/codegen/closure.rs", Function)]
 ```
 
-After closure conversion, each function exists as a separate top-level definition with an explicit parameter for its closure environment. The function body can access captured variables through projections from this environment parameter. This flat structure maps directly to the function model of assembly language, where each function has a fixed address and explicit parameters.
+闭包转换之后，每个函数都作为单独的顶层定义存在，并显式地有一个用于其闭包环境的参数。函数体可以通过从该环境参数进行投影来访问捕获的变量。这种扁平结构直接映射到汇编语言的函数模型，其中每个函数都有固定地址和显式参数。
 
-As an aside, there are alternative approaches to handling nested functions. The so-called *defunctionalization* approach converts higher-order functions into first-order code by replacing function values with data tags and a dispatch function, eliminating closures entirely but requiring whole-program transformation. *Lambda lifting* (also called closure elimination) transforms nested functions into top-level functions by adding their free variables as extra parameters, avoiding heap allocation of closures but potentially increasing the number of parameters passed at each call site. Alternatively the *continuation-passing style* transformation rewrites all functions to never return directly, instead passing their results to explicit continuation functions that represent "what to do next". This transformation makes control flow explicit and can simplify closure representation, but produces code that's harder to optimize and debug. We chose traditional closure conversion because it produces straightforward code that maps well to machine calling conventions, supports separate compilation, and integrates naturally with existing runtime systems while avoiding the parameter bloat of lambda lifting.
+顺便提一下，处理嵌套函数还有其他的方法。所谓的*去函数化*方法通过将函数值替换为数据标签和一个分发函数，将高阶函数转换为一阶代码，完全消除了闭包，但需要对整个程序进行转换。*Lambda 提升*（也称闭包消除）将嵌套函数转换为顶层函数，将其自由变量作为额外参数添加，避免了在堆上分配闭包，但可能增加每个调用点传递的参数数量。而*续体传递风格*转换则重写了所有函数，使其不再直接返回，而是将结果传递给显式的续体函数，这些函数代表了“下一步该做什么”。这种转换使控制流显式化，可以简化闭包表示，但生成的代码更难优化和调试。我们选择传统的闭包转换，因为它生成直接映射到机器调用约定的简单代码，支持单独编译，并能与现有运行时系统自然集成，同时避免了 lambda 提升导致的参数膨胀。
 
-## Free Variable Analysis
+## 自由变量分析
 
-Closure conversion requires identifying which variables each function captures from its enclosing scope. This free variable analysis traverses each function body to determine which variables are referenced but not bound within the function itself.
+闭包转换需要识别每个函数从其外部作用域捕获了哪些变量。这种自由变量分析会遍历每个函数体，以确定哪些变量被引用但未在函数自身内绑定。
 
 ```rust
 #![function!("system-f-omega/src/codegen/erase.rs", Erased::free_vars)]
 ```
 
-The free variable analysis maintains a set of bound variables as it traverses expressions. Variables that appear in the expression but not in the bound set are free and must be captured in the function's closure. This analysis handles the scoping rules correctly, adding variables to the bound set when entering their scope and removing them when leaving.
+自由变量分析在遍历表达式时维护一个已绑定变量的集合。出现在表达式中但不在绑定集合中的变量就是自由的，必须被捕获到函数的闭包中。该分析正确处理作用域规则：进入变量作用域时将其加入绑定集合，离开时将其移除。
 
-## Environment Representation
+## 环境表示
 
-The closure conversion algorithm maintains an environment that maps variables to their locations in closure environments. When a function captures variables, they are assigned positions in its closure, and references to these variables become projections at the appropriate indices.
+闭包转换算法维护一个将变量映射到闭包环境中位置的映射。当一个函数捕获变量时，它们被分配到闭包中的位置，对这些变量的引用就变为在相应索引处的投影。
 
 ```rust
 #![function!("system-f-omega/src/codegen/closure.rs", ClosureConverter::convert_with_modules)]
 ```
 
-The conversion process transforms each expression based on its structure and the current environment. Lambda abstractions become closure allocations that capture the current values of their free variables. Variable references check whether the variable is in the local environment or needs to be accessed through closure projection. Applications become calls that pass both the closure and the argument, following the calling convention for closure-converted code.
+转换过程根据每个表达式的结构和当前环境对其进行变换。Lambda 抽象变成闭包分配，捕获其自由变量的当前值。变量引用检查该变量是否在本地环境中，还是需要通过闭包投影来访问。应用变成同时传递闭包和参数的调用，遵循闭包转换后代码的调用约定。
 
-## Cranelift Code Generation
+## Cranelift 代码生成
 
-With closure conversion complete, the program consists of a collection of first-order functions and explicit closure operations. The Cranelift compiler framework transforms this representation into optimized machine code for the target architecture.
+完成闭包转换之后，程序由一组一阶函数和显式的闭包操作组成。Cranelift 编译器框架将这种表示转换为目标架构上优化后的机器代码。
 
 ```rust
 #![struct!("system-f-omega/src/codegen/compile.rs", CodeGen)]
 ```
 
-The code generator maintains the state necessary for compilation, including the Cranelift module that accumulates compiled functions, the function builder context for constructing individual functions, and mappings between our function identifiers and Cranelift's function references. The runtime functions structure provides access to the runtime system primitives that support memory allocation and other essential operations.
+代码生成器维护了编译所需的状态，包括累积已编译函数的 Cranelift 模块、用于构建单个函数的函数构建器上下文，以及我们的函数标识符与 Cranelift 函数引用之间的映射。运行时函数结构提供了对运行时系统原语的访问，这些原语支持内存分配和其他基本操作。
 
-## Value Representation
+## 值表示
 
-Our implementation uses a uniform representation for all runtime values, enabling polymorphic functions to operate on values of any type. This representation uses tagged pointers where the low bits indicate the value's type and the high bits contain the actual data or pointer.
+我们的实现对所有运行时值使用统一表示，使得多态函数能够操作任何类型的值。这种表示使用标记指针，其中低位指示值的类型，高位包含实际数据或指针。
 
-The tagging scheme exploits the fact that heap-allocated objects are word-aligned, leaving the low bits available for type tags. Here's how different values are represented in our 64-bit system:
+标记方案利用了堆分配对象是字对齐的这一事实，从而为类型标记留出了低位。以下是在我们的 64 位系统中不同值是如何表示的：
 
-**Integer Representation**:
+**整数表示**：
 ```
-Original integer: 42
+原始整数：42
 
-Binary representation of 42:      0000000000101010
-Shift left by 3:                  0000000101010000
-Add tag 1:                        0000000101010001
+42 的二进制表示：        0000000000101010
+左移 3 位：               0000000101010000
+加上标记 1：              0000000101010001
 
-64-bit tagged value:
+64 位标记值：
 ┌─────────────────────────────────────────────────────────┬───┐
-│                     Value (42)                          │001│
+│                     值 (42)                            │001│
 └─────────────────────────────────────────────────────────┴───┘
  63                                                      3 2 0
-                                                           tag
+                                                           标记
 ```
 
-**Closure Representation**:
+**闭包表示**：
 ```
-Closure in heap at address 0x7fff8000:
+堆中地址 0x7fff8000 处的闭包：
 
-Heap memory layout:
+堆内存布局：
 ┌────────────────┬────────────────┬────────────────┬────────────────┐
-│ Code pointer   │ Environment    │ Captured       │ Captured       │
-│ 0x400500       │ size: 2        │ value 1        │ value 2        │
+│ 代码指针       │ 环境           │ 捕获值 1       │ 捕获值 2       │
+│ 0x400500       │ 大小: 2        │                │                │
 └────────────────┴────────────────┴────────────────┴────────────────┘
  0x7fff8000       0x7fff8008       0x7fff8010       0x7fff8018
 
-Tagged pointer (address already 8-byte aligned, tag 0):
+标记指针（地址已是 8 字节对齐，标记为 0）：
 ┌─────────────────────────────────────────────────────────┬───┐
 │                 0x7fff8000                              │000│
 └─────────────────────────────────────────────────────────┴───┘
  63                                                      3 2 0
-                                                           tag
+                                                           标记
 ```
 
-**Extracting Values**:
+**提取值**：
 ```
-To check if integer:     value & 0x7 == 1
-To extract integer:      value >> 3 (arithmetic shift)
-To extract pointer:      value & ~0x7 (clear low 3 bits)
-```
-
-**Examples**:
-```
-Integer -5:
-  Actual value:     -5
-  Binary:           1111111111111111111111111111111111111111111111111111111111111011
-  Shifted left 3:   1111111111111111111111111111111111111111111111111111111111011000
-  Tagged:           1111111111111111111111111111111111111111111111111111111111011001
-  Hex:              0xffffffffffffffd9
-
-Integer 1000:
-  Tagged decimal:   8001
-  Tagged hex:       0x1f41
-  Extract:          8001 >> 3 = 1000
-
-Closure at 0x7000:
-  Tagged:           0x7000 (low bits already 000)
-  Code pointer:     *(uint64_t*)0x7000
-  Environment:      (uint64_t*)(0x7000 + 8)
+检查是否为整数：    value & 0x7 == 1
+提取整数：         value >> 3（算术右移）
+提取指针：         value & ~0x7（清除低 3 位）
 ```
 
-This representation allows our runtime to efficiently distinguish between integers and heap-allocated objects using a single bit test, while keeping integers unboxed for performance. The 3-bit tag space could be extended to support additional immediate types like booleans or characters, though our current implementation only uses integers and pointers.
+**示例**：
+```
+整数 -5：
+  实际值：         -5
+  二进制：         1111111111111111111111111111111111111111111111111111111111111011
+  左移 3 位：      1111111111111111111111111111111111111111111111111111111111011000
+  标记后：         1111111111111111111111111111111111111111111111111111111111011001
+  十六进制：       0xffffffffffffffd9
 
-## Function Compilation
+整数 1000：
+  标记十进制：     8001
+  标记十六进制：   0x1f41
+  提取：           8001 >> 3 = 1000
 
-Each closure-converted function compiles to a Cranelift function that follows a uniform calling convention. Functions receive two parameters: the closure containing captured variables and the function argument. They return a single value using the same tagged representation.
+地址 0x7000 处的闭包：
+  标记后：         0x7000（低位已经是 000）
+  代码指针：       *(uint64_t*)0x7000
+  环境：           (uint64_t*)(0x7000 + 8)
+```
+
+这种表示允许我们的运行时通过一次位测试高效地区分整数和堆分配对象，同时保持整数为未装箱形式以提高性能。3 位标记空间可以扩展以支持其他立即数类型，如布尔值或字符，尽管我们当前的实现只使用整数和指针。
+
+## 函数编译
+
+每个经过闭包转换的函数都会被编译成一个 Cranelift 函数，该函数遵循统一的调用约定。函数接收两个参数：包含捕获变量的闭包和函数参数。它们使用相同的标记表示返回一个值。
 
 ```rust
 #![function!("system-f-omega/src/codegen/compile.rs", CodeGen::compile_function)]
 ```
 
-Function compilation begins by creating the appropriate function signature and setting up the entry block. The function parameters are bound to variables in the compilation environment, making them available for use in the function body. The body compilation generates instructions that compute the function result, which is then returned using Cranelift's return instruction.
+函数编译首先创建适当的函数签名并设置入口块。函数参数被绑定到编译环境中的变量，从而可以在函数体中使用。函数体编译生成计算函数结果的指令序列，然后使用 Cranelift 的返回指令返回该结果。
 
-## Expression Compilation
+## 表达式编译
 
-The expression compiler transforms closure-converted expressions into sequences of Cranelift instructions. Each expression type requires specific handling to generate correct and efficient machine code.
+表达式编译器将闭包转换后的表达式转换为 Cranelift 指令序列。每种表达式类型都需要特定的处理，以生成正确且高效的机器代码。
 
 ```rust
 #![function!("system-f-omega/src/codegen/compile.rs", compile_expr)]
 ```
 
-Variable compilation looks up the variable in the environment to find its Cranelift value. Integer literals are tagged and returned directly. Binary operations extract integer values from their tagged representations, perform the operation, and retag the result. Closure creation allocates memory for the closure structure and initializes it with captured values. Function calls invoke the target function with the appropriate closure and argument.
+变量编译在环境中查找变量以获取其 Cranelift 值。整数常量被标记后直接返回。二元运算从标记表示中提取整数值，执行运算，然后重新标记结果。闭包创建为闭包结构分配内存，并使用捕获的值进行初始化。函数调用使用适当的闭包和参数调用目标函数。
 
-## Runtime System
+## 运行时系统
 
-The generated machine code cannot stand alone. It requires a runtime system that provides essential services not expressible in our high-level functional language. This runtime bridges the gap between pure functional code and the underlying operating system.
+生成的机器代码无法独立运行。它需要一个运行时系统来提供我们高级函数式语言无法表达的基本服务。这个运行时弥合了纯函数式代码与底层操作系统之间的差距。
 
 ```rust
 #![struct!("system-f-omega/src/codegen/runtime.rs", RuntimeFunctions)]
 ```
 
-The runtime provides several categories of essential services through functions that follow our calling conventions and value representations. Each runtime function is declared to Cranelift and can be called directly from generated code.
+运行时通过遵循我们调用约定和值表示的函数提供多个类别的基本服务。每个运行时函数都向 Cranelift 声明，并且可以直接从生成的代码中调用。
 
-The actual implementation of these runtime functions lives in a separate support library written in Rust with `no_std` to minimize dependencies:
+这些运行时函数的实际实现位于一个单独的支持库中，该库使用 Rust 编写，并采用 `no_std` 以减少依赖：
 
 ```rust
 #![source_file!("system-f-omega/src/codegen/runtime_support.rs")]
 ```
 
-The runtime support library serves several core purposes:
+运行时支持库服务于以下几个核心目的：
 
-**Memory Allocation**: Our functional language creates closures and other data structures dynamically, but has no concept of memory management. The runtime provides `rt_alloc`, a simple bump allocator that manages a fixed 1MB heap. This allocator is deliberately minimal, it only allocates, never frees, which is sufficient for our demonstration language. The bump allocator maintains a pointer into a static array and advances it for each allocation, ensuring 8-byte alignment for all allocations.
+**内存分配**：我们的函数式语言动态创建闭包和其他数据结构，但没有内存管理的概念。运行时提供 `rt_alloc`，一个简单的碰撞分配器，管理一个固定的 1MB 堆。这个分配器故意设计得非常简单：它只分配，从不释放，这对于我们的演示语言来说已经足够。碰撞分配器维护一个指向静态数组的指针，并在每次分配时向前移动指针，确保所有分配都是 8 字节对齐的。
 
-**Value Creation**: The `make_int` function tags raw integers for use in our tagged representation, while `make_closure` allocates and initializes closure structures with their code pointers and captured environments. The `project_env` function extracts values from closure environments during execution.
+**值创建**：`make_int` 函数将原始整数标记为我们的标记表示，而 `make_closure` 函数分配并初始化闭包结构，包含其代码指针和捕获的环境。`project_env` 函数在执行过程中从闭包环境中提取值。
 
-**Function Application**: The `apply` function implements the calling convention for closure invocation. It extracts the code pointer from a closure and calls it with the closure and argument, handling the low-level details of our calling convention.
+**函数应用**：`apply` 函数实现了闭包调用的调用约定。它从闭包中提取代码指针，并使用闭包和参数调用该函数，处理我们调用约定的底层细节。
 
-**Input/Output**: Pure functional languages have no inherent notion of effects like printing to the console. The runtime provides `rt_print_int` which unwraps our tagged integer representation and calls the C library's `printf` function to display the value. This is our only connection to the outside world, allowing programs to produce observable output.
+**输入/输出**：纯函数式语言没有打印到控制台这类效果的内在概念。运行时提供了 `rt_print_int`，它会解包我们标记的整数表示，并调用 C 库的 `printf` 函数来显示该值。这是我们与外部世界的唯一连接，使程序能够产生可观察的输出。
 
-**Error Handling**: When the heap is exhausted, the runtime writes an error message directly to stderr using the POSIX `write` system call and terminates the program. The panic handler similarly ensures clean termination if any runtime invariant is violated.
+**错误处理**：当堆耗尽时，运行时使用 POSIX 的 `write` 系统调用直接将错误消息写入 stderr，并终止程序。类似地，如果任何运行时不变式被违反，panic 处理器会确保干净的终止。
 
-**Operating System Interface**: The runtime uses direct foreign function interface calls to libc for its interactions with the operating system. This includes `printf` for formatted output, `write` for error messages, and `exit` for program termination.
+**操作系统接口**：运行时通过直接的外国函数接口调用 libc 来与操作系统交互。这包括用于格式化输出的 `printf`、用于错误消息的 `write` 以及用于程序终止的 `exit`。
 
-The `no_std` and `no_main` attributes tell Rust not to include its standard library or generate a main function, keeping the runtime minimal. The entire runtime compiles to a small object file that gets linked with our generated code. During the build process, `build.rs` invokes the Rust compiler directly:
+`no_std` 和 `no_main` 属性告诉 Rust 不要包含其标准库或生成 main 函数，从而保持运行时最小化。整个运行时编译成一个小的目标文件，该文件与我们生成的代码链接在一起。在构建过程中，`build.rs` 直接调用 Rust 编译器：
 
 ```bash
 rustc --crate-type=staticlib --emit=obj -C opt-level=2 -C panic=abort runtime_support.rs
 ```
 
-This produces an object file containing just our runtime functions, which the system linker combines with the Cranelift-generated code to create the final executable. The beauty of this approach is that we get exactly the runtime support we need while leveraging existing system libraries for the heavy lifting.
+这会生成一个仅包含我们运行时函数的目标文件，系统链接器将其与 Cranelift 生成的代码合并，产生最终的可执行文件。这种方法的美妙之处在于，我们恰好获得了所需的运行时支持，同时利用现有的系统库处理繁重的工作。
 
-## Memory Management
+## 内存管理
 
-As an aside, note that our toy runtime uses a naive bump allocator that never frees memory. Which is simple, but isn't ideal to put it mildly. This approach would quickly exhaust memory in real programs since functional languages allocate closures and immutable data structures prolifically. A real implementation would require some careful thinking about memory management, and there are several approaches.
+顺便说一句，注意我们的玩具运行时使用了一个幼稚的碰碰分配器，它从不释放内存。这很简单，但委婉地说并不理想。这种方法在真实程序中会迅速耗尽内存，因为函数式语言会大量分配闭包和不可变数据结构。真正的实现需要仔细考虑内存管理，并且有几种方法。
 
-**Garbage Collection**: The simplest solution is to bolt on a garbage collector like the [Boehm-Demers-Weiser garbage collector](https://www.hboehm.info/gc/), which is a conservative collector that works with minimal compiler modifications. Boehm GC scans memory for values that look like pointers and conservatively assumes they might be live references. It pretty much works off-the-shell, just requiring us to replace `malloc` with `GC_malloc` and handles root identification, reachability analysis, and memory reclamation automatically. The conservative approach occasionally retains dead memory but avoids the complexity of precise pointer tracking. There are [Rust bindings](https://crates.io/crates/boehm_gc) and it merely requires installing the `libgc` C library with:
+**垃圾回收**：最简单的解决方案是附加一个垃圾回收器，例如 [Boehm-Demers-Weiser 垃圾回收器](https://www.hboehm.info/gc/)，它是一个保守的回收器，只需最少的编译器修改即可工作。Boehm GC 扫描内存中看起来像指针的值，并保守地假定它们可能是活引用。它几乎可以开箱即用，只需将 `malloc` 替换为 `GC_malloc`，并自动处理根标识、可达性分析和内存回收。保守的方法偶尔会保留死内存，但避免了精确指针跟踪的复杂性。有 [Rust 绑定](https://crates.io/crates/boehm_gc)，只需安装 `libgc` C 库：
 
 ```shell
 brew install libgc
 ```
 
-More sophisticated garbage collectors offer better performance through various techniques. Generational collectors exploit the observation that most objects die young, segregating new allocations into a nursery that gets collected frequently, this is used in languages like Haskell and [Ocaml](https://ocaml.org/docs/garbage-collector). Concurrent collectors run collection in parallel with the program, reducing pause times. Incremental collectors spread collection work across many small pauses rather than stopping the world. Each approach requires deeper runtime integration and careful handling of write barriers and safepoints.
+更复杂的垃圾回收器通过各种技术提供更好的性能。分代回收器利用大多数对象夭折的观察结果，将新分配隔离到一个频繁回收的托儿所中，这在 Haskell 和 [Ocaml](https://ocaml.org/docs/garbage-collector) 等语言中使用。并发回收器与程序并行运行回收，减少暂停时间。增量回收器将回收工作分散到多次小暂停中，而不是停止整个世界。每种方法都需要更深的运行时集成，并仔细处理写屏障和安全点。
 
-**Modern Approaches**: Recent years have seen renewed interest in static memory management techniques that avoid garbage collection entirely. Affine types (or *move semantics*), pioneered by languages like Rust, ensure that each value has exactly one owner and is used exactly once. This enables compile-time memory management without runtime overhead. The type system tracks ownership and borrowing, preventing use-after-free and data races while enabling safe manual memory management.
+**现代方法**：近年来，人们对完全避免垃圾回收的静态内存管理技术重新产生了兴趣。仿射类型（或 *移动语义*）由 Rust 等语言开创，确保每个值恰好有一个所有者，并且恰好使用一次。这使得编译时内存管理无需运行时开销。类型系统跟踪所有权和借用，防止释放后使用和数据竞争，同时实现安全的手动内存管理。
 
-Region-based memory management groups related allocations into regions that can be deallocated together. Languages like [Cyclone](https://cyclone.thelanguage.org/) and more recently [Koka](https://koka-lang.github.io/koka/doc/index.html) use effect systems to track region lifetimes. This approach works particularly well for functional languages where data often has stack-like lifetimes corresponding to function calls.
+基于区域的内存管理将相关的分配分组到可以一起释放的区域中。像 [Cyclone](https://cyclone.thelanguage.org/) 以及最近的 [Koka](https://koka-lang.github.io/koka/doc/index.html) 这样的语言使用效果系统来跟踪区域生命周期。这种方法对于函数式语言特别有效，因为函数式语言中的数据通常具有与函数调用对应的类似栈的生命周期。
 
-Reference counting with cycle detection offers another alternative, used by languages like Swift and Python. Modern reference counting implementations use deferred reference counting to reduce overhead and can achieve performance competitive with tracing garbage collectors for many workloads.
+带循环检测的引用计数提供了另一种选择，被 Swift 和 Python 等语言使用。现代引用计数实现使用延迟引用计数来减少开销，并且对于许多工作负载可以达到与追踪垃圾回收器竞争的性能。
 
-The choice of memory management strategy will profoundly impact language design. Tracing garbage collection enables simple APIs and unrestricted sharing but requires runtime overhead and can cause unpredictable pauses. Linear types and ownership systems provide predictable performance and memory usage but complicate the programming model. As hardware evolves and programming patterns change, the tradeoffs continue to shift. A good overview of this deep area is Hosking's book *The Garbage Collection Handbook: The Art of Automatic Memory Management*.
+内存管理策略的选择将深刻影响语言设计。追踪垃圾回收支持简单的 API 和无限制的共享，但需要运行时开销并可能导致不可预测的暂停。线性类型和所有权系统提供了可预测的性能和内存使用，但使编程模型复杂化。随着硬件的发展和编程模式的变化，权衡也在不断变化。关于这个深度领域的一个很好的概述是 Hosking 的《垃圾回收手册：自动内存管理的艺术》。
 
-## Executable Generation
+## 可执行文件生成
 
-The final phase links the generated code with the runtime system to produce a standalone executable. This process involves generating object files, linking with the runtime support library, and producing an executable for the target platform.
+最后阶段将生成的代码与运行时系统链接，以生成独立的可执行文件。这个过程涉及生成目标文件、链接运行时支持库，并为目标平台生成可执行文件。
 
 ```rust
 #![function!("system-f-omega/src/codegen/executable.rs", compile_executable)]
 ```
 
-The executable generation process coordinates the entire compilation pipeline. Type erasure removes type information from the core language representation. Closure conversion transforms nested functions into explicit closures. Cranelift compilation generates machine code for each function. The main function wraps the program's entry point with appropriate initialization. Finally, the system linker combines the generated code with the runtime library to produce an executable program.
+可执行文件生成过程协调整个编译管道。类型擦除从核心语言表示中移除类型信息。闭包转换将嵌套的函数转换为显式的闭包。Cranelift 编译为每个函数生成机器代码。主函数包装程序的入口点并执行适当的初始化。最后，系统链接器将生成的代码与运行时库结合，生成一个可执行程序。
 
-And that's it, that's a full compiler! You've made a full optimizing compiler from a pure platonic mathematical construct all the way down to the messy real world of silicon and electrons.
+以上就是全部内容，一个完整的编译器！你已经从纯粹的柏拉图式数学构造一路深入，直到混乱的硅和电子的真实世界，构建了一个完整的优化编译器。
 
-## Compiling a Simple Program
+## 编译一个简单的程序
 
-So how do invoke it? Basically just like any other compile. We take an input file and we get a machine-native executable out the other end.
+那么如何调用它呢？基本上就像其他编译一样。我们输入一个文件，另一端得到一个机器原生的可执行文件。
 
-Let's trace through the compilation of a simple recursive factorial function to see how all these pieces work together:
+让我们追踪一个简单的递归阶乘函数的编译过程，看看所有这些部分是如何协同工作的：
 
 ```haskell
 -- factorial.fun
@@ -330,7 +329,7 @@ main :: Int;
 main = printInt(fib 10);
 ```
 
-First, compile and run the program:
+首先，编译并运行程序：
 
 ```bash
 $ cd system-f-omega
@@ -339,21 +338,21 @@ $ ./factorial
 55
 ```
 
-The compilation process transforms this high-level program through several stages:
+编译过程将这个高级程序通过几个阶段进行转换：
 
-**After Type Erasure**: The polymorphic type information disappears, leaving only the computational structure:
+**类型擦除后**：多态类型信息消失，仅保留计算结构：
 ```
 fib = λn. if n Le 1 then n else fib (n Sub 1) Add fib (n Sub 2)
 main = printInt(fib 10)
 ```
 
-**After Closure Conversion**: Functions become explicit closures with captured environments:
+**闭包转换后**：函数变为带有捕获环境的显式闭包：
 ```
 Function 0: n -> if n Le 1 then n else closure(0, [])(n Sub 1) Add closure(0, [])(n Sub 2)
   Free vars: []
 Main: printInt(closure(0, [])(10))
 ```
 
-**Machine Code Generation**: Cranelift generates optimized assembly for the target architecture, handling the tagged value representation, closure allocation, and function calls according to our calling convention.
+**机器码生成**：Cranelift 根据目标架构生成优化后的汇编代码，根据我们的调用约定处理带标记的值表示、闭包分配和函数调用。
 
-And that's the entire journey from theoretical type system to efficient machine code. The lambda calculus need not remain an abstract concept; it can be compiled down to run precisely as efficiently as C or Rust code with the right set of abstractions! Compilers need not be hard, in fact they are quite fun!
+这就是从理论类型系统到高效机器码的完整旅程。λ演算不必停留在抽象概念层面；通过合适的抽象机制，它可以被编译并像 C 或 Rust 代码一样精确高效地运行！编译器不必困难，事实上它们相当有趣！

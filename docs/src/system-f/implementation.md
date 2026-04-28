@@ -1,172 +1,172 @@
-# Implementation
+# 实现
 
-Ok, now we move beyond the trivial type systems from the 1970s and into the fun stuff from the 1980s! System F's bidirectional type checking represents a  approach to handling polymorphic types without requiring full type annotations everywhere. The bidirectional approach splits type checking into two complementary modes: **inference** (synthesizing types from expressions) and **checking** (verifying that expressions conform to expected types). This division allows the system to gracefully handle situations where types are partially known or completely unknown, making the language more ergonomic while preserving type safety.
+好了，现在我们跨越了20世纪70年代那些简单的类型系统，进入80年代更有趣的内容！系统F的双向类型检查代表了一种处理多态类型的方法，无需在每个地方都加上完整的类型标注。双向方法将类型检查分为两种互补模式：**推断**（从表达式中综合出类型）和**检查**（验证表达式是否符合预期的类型）。这种划分使得系统能够优雅地处理类型部分已知或完全未知的情况，在保证类型安全的同时让语言更易用。
 
-## Typing Rules
+## 类型规则
 
-Before diving into the implementation details, let's establish the formal typing rules that govern System F. Buckle up, because we're about to embark into the fun magical land of type-level wizardry! We'll be introducing a few new symbols that might look intimidating at first, but they're really not that scary once you get used to them.
+在深入实现细节之前，我们先确立控制系统F的正式类型规则。系好安全带，因为我们即将踏进类型层面魔法王国的奇妙旅程！我们会介绍几个新符号，初次看到可能有点吓人，但一旦熟悉了，它们真的没那么可怕。
 
-* **\\( \Gamma \\) (Gamma)** - The typing context, which is like a dictionary that maps variables to their types and keeps track of what we know so far.
+* **\\( \Gamma \\) (Gamma)** —— 类型上下文，就像一个字典，将变量映射到它们的类型，并记录我们目前已知的信息。
 
-* **\\( \vdash \\) (Turnstile)** - The "proves" or "entails" symbol. When we write \\( \Gamma \vdash e \Rightarrow A \\), we're saying "given context \\( \Gamma \\), expression \\( e \\) synthesizes type \\( A \\)."
+* **\\( \vdash \\) (Turnstile)** —— “证明”或“蕴含”符号。当我们写 \\( \Gamma \vdash e \Rightarrow A \\) 时，意思是在上下文 \\( \Gamma \\) 下，表达式 \\( e \\) 综合出类型 \\( A \\)。
 
-* **\\( \Rightarrow \\) (Double Right Arrow)** - Inference mode, where we're asking "what type does this expression have?" The type checker figures it out for us.
+* **\\( \Rightarrow \\) (双右箭头)** —— 推断模式，用于询问“这个表达式是什么类型？”由类型检查器来回答。
 
-* **\\( \Leftarrow \\) (Double Left Arrow)** - Checking mode, where we're saying "please verify this expression has the expected type." We already know what type we want.
+* **\\( \Leftarrow \\) (双左箭头)** —— 检查模式，用于说明“请验证这个表达式具有预期的类型”。我们已知想要的类型是什么。
 
-* **\\( \forall \\) (Forall)** - Universal quantification, meaning "for any type." When we see \\( \forall \alpha. A \\), it means "for any type \\( \alpha \\), we have type \\( A \\)."
+* **\\( \forall \\) (全称量词)** —— 全称量化，意思是“对所有类型”。看到 \\( \forall \alpha. A \\) 时，它表示“对任意类型 \\( \alpha \\)，我们都有类型 \\( A \\)”。
 
-* **\\( \hat{\alpha} \\) (Hat Alpha)** - Existential type variables, which are like type-level unknowns that the system solves during inference. Think of them as placeholders that get filled in later.
+* **\\( \hat{\alpha} \\) (Hat Alpha)** —— 存在类型变量，类似于类型层面的未知量，由系统在推断过程中求解。可以把它们看作占位符，稍后会被填充。
 
-* **\\( \bullet \\) (Bullet)** - The application judgment symbol used in our inference rules. When we write \\( A \bullet e \Rightarrow B \\), we're saying "applying type \\( A \\) to expression \\( e \\) yields type \\( B \\)."
+* **\\( \bullet \\) (实心圆)** —— 应用判断符号，用于我们的推断规则。写 \\( A \bullet e \Rightarrow B \\) 时，意思是“将类型 \\( A \\) 应用于表达式 \\( e \\) 得到类型 \\( B \\)”。
 
-* **\\( <: \\) (Subtype)** - The subtyping relation, expressing that one type is "more specific" than another. For example, \\( \text{Int} <: \forall \alpha. \alpha \\) would mean Int is a subtype of the polymorphic type.
+* **\\( <: \\) (子类型)** —— 子类型关系，表示一个类型比另一个类型“更具体”。例如，\\( \text{Int} <: \forall \alpha. \alpha \\) 意味着 Int 是多态类型的子类型。
 
-* **\\( [B/\alpha]A \\)** - Type substitution, replacing all occurrences of type variable \\( \alpha \\) with type \\( B \\) in type \\( A \\). This is how we instantiate polymorphic types.
+* **\\( [B/\alpha]A \\)** —— 类型替换，将类型 \\( A \\) 中所有出现的类型变量 \\( \alpha \\) 替换为类型 \\( B \\)。这就是我们实例化多态类型的方式。
 
-Now that we've equipped ourselves with this symbolic toolkit, let's see how these pieces combine to create the elegant machinery of System F type checking.
+现在我们已经装备好了这套符号工具箱，接下来看看这些元素如何组合在一起，构成系统F优雅的类型检查机制。
 
-### Basic Rules
+### 基本规则
 
-The variable rule looks up types from the context:
+变量规则从上下文中查找类型：
 
 \\[ \frac{x : A \in \Gamma}{\Gamma \vdash x \Rightarrow A} \text{(T-Var)} \\]
 
-Application checks that the function type matches the argument:
+应用规则检查函数类型是否与参数匹配：
 
 \\[ \frac{\Gamma \vdash e_1 \Rightarrow A \to B \quad \Gamma \vdash e_2 \Leftarrow A}{\Gamma \vdash e_1 \; e_2 \Rightarrow B} \text{(T-App)} \\]
 
-Lambda abstraction introduces a new variable binding:
+Lambda抽象引入一个新的变量绑定：
 
 \\[ \frac{\Gamma, x : A \vdash e \Leftarrow B}{\Gamma \vdash \lambda x. e \Leftarrow A \to B} \text{(T-Abs)} \\]
 
-### Polymorphic Rules
+### 多态规则
 
-Universal introduction allows us to generalize over type variables:
+全称引入允许对类型变量进行泛化：
 
 \\[ \frac{\Gamma, \alpha \vdash e \Leftarrow A}{\Gamma \vdash e \Leftarrow \forall \alpha. A} \text{(T-ForallI)} \\]
 
-Universal elimination instantiates polymorphic types:
+全称消除实例化多态类型：
 
 \\[ \frac{\Gamma \vdash e \Rightarrow \forall \alpha. A}{\Gamma \vdash e \Rightarrow [B/\alpha]A} \text{(T-ForallE)} \\]
 
-Type annotation allows switching from checking to inference mode:
+类型标注允许从检查模式切换到推断模式：
 
 \\[ \frac{\Gamma \vdash e \Leftarrow A}{\Gamma \vdash (e : A) \Rightarrow A} \text{(T-Instr)} \\]
 
-### Primitive Type Rules
+### 基本类型规则
 
-Integer literals have type Int:
+整数字面量的类型为 Int：
 
 \\[ \frac{}{\Gamma \vdash n \Rightarrow \text{Int}} \text{(T-LitInt)} \\]
 
-Boolean literals have type Bool:
+布尔字面量的类型为 Bool：
 
 \\[ \frac{}{\Gamma \vdash \text{true} \Rightarrow \text{Bool}} \text{(T-LitBool)} \\]
 
-### Control Flow Rules
+### 控制流规则
 
-Let bindings introduce local variables:
+let绑定引入局部变量：
 
 \\[ \frac{\Gamma \vdash e_1 \Rightarrow A \quad \Gamma, x : A \vdash e_2 \Rightarrow B}{\Gamma \vdash \text{let } x = e_1 \text{ in } e_2 \Rightarrow B} \text{(T-Let)} \\]
 
-Conditional expressions require Bool conditions and matching branch types:
+条件表达式要求 Bool 类型条件且分支类型一致：
 
 \\[ \frac{\Gamma \vdash e_1 \Leftarrow \text{Bool} \quad \Gamma \vdash e_2 \Rightarrow A \quad \Gamma \vdash e_3 \Leftarrow A}{\Gamma \vdash \text{if } e_1 \text{ then } e_2 \text{ else } e_3 \Rightarrow A} \text{(T-If)} \\]
 
-### Binary Operation Rules
+### 二元操作规则
 
-Arithmetic operations take two integers and return an integer:
+算术操作接收两个整数并返回一个整数：
 
 \\[ \frac{\Gamma \vdash e_1 \Leftarrow \text{Int} \quad \Gamma \vdash e_2 \Leftarrow \text{Int}}{\Gamma \vdash e_1 \oplus e_2 \Rightarrow \text{Int}} \text{(T-Arith)} \\]
 
-Boolean operations take two booleans and return a boolean:
+布尔操作接收两个布尔值并返回一个布尔值：
 
 \\[ \frac{\Gamma \vdash e_1 \Leftarrow \text{Bool} \quad \Gamma \vdash e_2 \Leftarrow \text{Bool}}{\Gamma \vdash e_1 \land e_2 \Rightarrow \text{Bool}} \text{(T-Bool)} \\]
 
-Comparison operations take two integers and return a boolean:
+比较操作接收两个整数并返回一个布尔值：
 
 \\[ \frac{\Gamma \vdash e_1 \Leftarrow \text{Int} \quad \Gamma \vdash e_2 \Leftarrow \text{Int}}{\Gamma \vdash e_1 < e_2 \Rightarrow \text{Bool}} \text{(T-Cmp)} \\]
 
-Equality operations are polymorphic and work on any type:
+相等操作是多态的，适用于任何类型：
 
 \\[ \frac{\Gamma \vdash e_1 \Rightarrow A \quad \Gamma \vdash e_2 \Leftarrow A}{\Gamma \vdash e_1 = e_2 \Rightarrow \text{Bool}} \text{(T-Eq)} \\]
 
-### Bidirectional Rules
+### 双向规则
 
-The mode switch allows inference results to be checked:
+模式切换允许将推断结果用于检查：
 
 \\[ \frac{\Gamma \vdash e \Rightarrow A}{\Gamma \vdash e \Leftarrow A} \text{(T-Sub)} \\]
 
-Existential variables are introduced for unknown types:
+存在变量用于未知类型：
 
 \\[ \frac{\Gamma, \hat{\alpha} \vdash e \Rightarrow A}{\Gamma \vdash e \Rightarrow [\hat{\alpha}/\alpha]A} \text{(T-InstL)} \\]
 
-### Application Inference Rules
+### 应用推断规则
 
-Application inference handles complex cases where the function type is not immediately known:
+应用推断处理函数类型未立即知晓的复杂情况：
 
-Application with arrow types:
+带箭头类型的应用：
 \\[ \frac{\Gamma \vdash e_2 \Leftarrow A}{\Gamma \vdash A \to B \bullet e_2 \Rightarrow B} \text{(T-AppArrow)} \\]
 
-Application with existential variables:
+带存在变量的应用：
 \\[ \frac{\Gamma[\hat{\alpha} := \hat{\alpha_1} \to \hat{\alpha_2}], \hat{\alpha_1}, \hat{\alpha_2} \vdash e_2 \Leftarrow \hat{\alpha_1}}{\Gamma \vdash \hat{\alpha} \bullet e_2 \Rightarrow \hat{\alpha_2}} \text{(T-AppEVar)} \\]
 
-In these rules, \\( \Rightarrow \\) indicates **inference** mode (synthesizing a type), while \\( \Leftarrow \\) indicates **checking** mode (verifying against an expected type). The hat notation \\( \hat{\alpha} \\) denotes existential type variables that the system solves during inference.
+在这些规则中，\\( \Rightarrow \\) 表示**推断**模式（综合出类型），而 \\( \Leftarrow \\) 表示**检查**模式（对照预期类型进行验证）。帽子符号 \\( \hat{\alpha} \\) 表示存在类型变量，系统会在推断过程中求解它们。
 
-## Core Data Structures
+## 核心数据结构
 
-### Context and Environment Management
+### 上下文与环境管理
 
-The bidirectional algorithm maintains a  context that tracks multiple kinds of bindings and constraints. Our context system needs to handle not just term variables and their types, but also type variables, existential variables, and the relationships between them.
+双向算法维护一个上下文，该上下文跟踪多种类型的绑定和约束。我们的上下文系统不仅需要处理项变量及其类型，还需要处理类型变量、存在变量以及它们之间的关系。
 
 ```rust
 #![enum!("system-f/src/typecheck.rs", Entry)]
 ```
 
-The context entries represent different kinds of information the type checker needs to track throughout the bidirectional inference process. Variable bindings, represented as `VarBnd(TmVar, Type)`, associate term variables with their types, such as recording that `x` has type `Int` in the current scope. Type variable bindings, denoted as `TVarBnd(TyVar)`, introduce type variables into scope, such as the \\( \\alpha \\) that appears in universal quantification \\( \\forall \\alpha. \\ldots \\).
+上下文条目代表类型检查器在整个双向推理过程中需要跟踪的不同种类的信息。变量绑定表示为 `VarBnd(TmVar, Type)`，将项变量与其类型关联起来，例如记录当前作用域中 `x` 具有类型 `Int`。类型变量绑定表示为 `TVarBnd(TyVar)`，将类型变量引入作用域，例如出现在全称量化 \\( \forall \alpha. \ldots \\) 中的 \\( \alpha \\)。
 
-Existential type variable bindings, written as `ETVarBnd(TyVar)`, introduce existential type variables that represent unknown types to be determined through constraint solving. Solved existential type variable bindings, represented as `SETVarBnd(TyVar, Type)`, record the concrete solutions discovered for existential variables during the inference process. Finally, marker entries, denoted as `Mark(TyVar)`, mark the beginning of a scope to enable proper garbage collection of type variables when their scope is exited.
+存在类型变量绑定写作 `ETVarBnd(TyVar)`，引入表示待通过约束求解确定未知类型的类型变量。已求解的存在类型变量绑定表示为 `SETVarBnd(TyVar, Type)`，记录推理过程中为存在变量发现的具体解。最后，标记条目表示为 `Mark(TyVar)`，标记作用域的开始，以便在退出作用域时正确垃圾回收类型变量。
 
-The context itself maintains these entries in a stack-like structure where order matters crucially for scoping and variable resolution:
+上下文本身以类似栈的结构维护这些条目，其中顺序对于作用域和变量解析至关重要：
 
 ```rust
 #![struct!("system-f/src/typecheck.rs", Context)]
 ```
 
-Context management requires careful attention to scoping rules. When we enter a polymorphic function or introduce new type variables, we must ensure they are properly cleaned up when we exit their scope. The context provides methods for breaking it apart and reconstructing it to handle these operations efficiently.
+上下文管理需要仔细关注作用域规则。当我们进入多态函数或引入新类型变量时，必须确保在退出其作用域时正确清理它们。上下文提供了拆分和重构的方法，以高效处理这些操作。
 
-### Type Substitution and Application
+### 类型替换与应用
 
-Type substitution forms the computational heart of our System F implementation. When we instantiate a polymorphic type or solve existential variables, we need to systematically replace type variables with concrete types throughout complex type expressions.
+类型替换构成了我们 System F 实现的计算核心。当实例化多态类型或求解存在变量时，我们需要在复杂类型表达式中系统地将类型变量替换为具体类型。
 
 ```rust
 #![function!("system-f/src/typecheck.rs", BiDirectional::subst_type)]
 ```
 
-Substitution must handle variable capture correctly. When substituting into a `Forall` type, we must ensure that the bound variable doesn't conflict with the replacement type. This is analogous to alpha-conversion in lambda calculus but operates at the type level.
+替换必须正确处理变量捕获。当替换到 `Forall` 类型时，我们必须确保绑定变量不与替换类型冲突。这类似于 lambda 演算中的 alpha-转换，但在类型层面操作。
 
-Context application extends substitution by applying the current state of existential variable solutions to a type:
+上下文应用通过将存在变量解的当前状态应用到类型来扩展替换：
 
 ```rust
 #![function!("system-f/src/typecheck.rs", BiDirectional::apply_ctx_type)]
 ```
 
-This operation is essential because our algorithm incrementally builds up solutions to existential variables. As we learn more about unknown types, we need to propagate this information through all the types we're working with.
+此操作至关重要，因为我们的算法逐步构建存在变量的解。随着我们对未知类型的了解更多，我们需要通过所有正在处理的类型传播此信息。
 
-## Bidirectional Algorithm Core
+## 双向算法核心
 
-### Inference Rules
+### 推理规则
 
-The inference mode synthesizes types from expressions. Our implementation uses a modular approach where the main inference function delegates to specialized methods for each syntactic form.
+推理模式从表达式综合类型。我们的实现采用模块化方法，主推理函数将每种语法形式委托给专门的方法。
 
 ```rust
 #![function!("system-f/src/typecheck.rs", BiDirectional::infer)]
 ```
 
-The inference function delegates to specialized methods that implement individual typing rules:
+推理函数委托给实现各个类型规则的方法：
 
-**Variable Lookup** follows the T-Var rule:
+**变量查找** 遵循 T-Var 规则：
 
 \\[ \frac{x : A \in \Gamma}{\Gamma \vdash x \Rightarrow A} \text{(T-Var)} \\]
 
@@ -174,7 +174,7 @@ The inference function delegates to specialized methods that implement individua
 #![function!("system-f/src/typecheck.rs", BiDirectional::infer_var)]
 ```
 
-**Integer Literals** use the T-LitInt rule:
+**整数字面量** 使用 T-LitInt 规则：
 
 \\[ \frac{}{\Gamma \vdash n \Rightarrow \text{Int}} \text{(T-LitInt)} \\]
 
@@ -182,7 +182,7 @@ The inference function delegates to specialized methods that implement individua
 #![function!("system-f/src/typecheck.rs", BiDirectional::infer_lit_int)]
 ```
 
-**Boolean Literals** use the T-LitBool rule:
+**布尔字面量** 使用 T-LitBool 规则：
 
 \\[ \frac{}{\Gamma \vdash \text{true} \Rightarrow \text{Bool}} \text{(T-LitBool)} \\]
 
@@ -190,7 +190,7 @@ The inference function delegates to specialized methods that implement individua
 #![function!("system-f/src/typecheck.rs", BiDirectional::infer_lit_bool)]
 ```
 
-**Lambda Abstraction** implements the T-Abs rule:
+**Lambda 抽象** 实现 T-Abs 规则：
 
 \\[ \frac{\Gamma, x : A \vdash e \Leftarrow B}{\Gamma \vdash \lambda x. e \Leftarrow A \to B} \text{(T-Abs)} \\]
 
@@ -198,7 +198,7 @@ The inference function delegates to specialized methods that implement individua
 #![function!("system-f/src/typecheck.rs", BiDirectional::infer_abs)]
 ```
 
-**Function Application** uses the T-App rule:
+**函数应用** 使用 T-App 规则：
 
 \\[ \frac{\Gamma \vdash e_1 \Rightarrow A \to B \quad \Gamma \vdash e_2 \Leftarrow A}{\Gamma \vdash e_1 \; e_2 \Rightarrow B} \text{(T-App)} \\]
 
@@ -206,7 +206,7 @@ The inference function delegates to specialized methods that implement individua
 #![function!("system-f/src/typecheck.rs", BiDirectional::infer_application)]
 ```
 
-**Let Bindings** implement the T-Let rule:
+**Let 绑定** 实现 T-Let 规则：
 
 \\[ \frac{\Gamma \vdash e_1 \Rightarrow A \quad \Gamma, x : A \vdash e_2 \Rightarrow B}{\Gamma \vdash \text{let } x = e_1 \text{ in } e_2 \Rightarrow B} \text{(T-Let)} \\]
 
@@ -214,7 +214,7 @@ The inference function delegates to specialized methods that implement individua
 #![function!("system-f/src/typecheck.rs", BiDirectional::infer_let)]
 ```
 
-**Conditional Expressions** use the T-If rule:
+**条件表达式** 使用 T-If 规则：
 
 \\[ \frac{\Gamma \vdash e_1 \Leftarrow \text{Bool} \quad \Gamma \vdash e_2 \Rightarrow A \quad \Gamma \vdash e_3 \Leftarrow A}{\Gamma \vdash \text{if } e_1 \text{ then } e_2 \text{ else } e_3 \Rightarrow A} \text{(T-If)} \\]
 
@@ -222,7 +222,7 @@ The inference function delegates to specialized methods that implement individua
 #![function!("system-f/src/typecheck.rs", BiDirectional::infer_if)]
 ```
 
-**Binary Operations** implement the T-BinOp rules (T-Arith, T-Bool, T-Cmp, T-Eq):
+**二元运算** 实现 T-BinOp 规则（T-Arith、T-Bool、T-Cmp、T-Eq）：
 
 \\[ \frac{\Gamma \vdash e_1 \Leftarrow \text{Int} \quad \Gamma \vdash e_2 \Leftarrow \text{Int}}{\Gamma \vdash e_1 \oplus e_2 \Rightarrow \text{Int}} \text{(T-Arith)} \\]
 
@@ -236,7 +236,7 @@ The inference function delegates to specialized methods that implement individua
 #![function!("system-f/src/typecheck.rs", BiDirectional::infer_binop)]
 ```
 
-**Type Annotations** use the T-Instr rule:
+**类型注解** 使用 T-Instr 规则：
 
 \\[ \frac{\Gamma \vdash e \Leftarrow A}{\Gamma \vdash (e : A) \Rightarrow A} \text{(T-Instr)} \\]
 
@@ -244,7 +244,7 @@ The inference function delegates to specialized methods that implement individua
 #![function!("system-f/src/typecheck.rs", BiDirectional::infer_ann)]
 ```
 
-**Type Abstraction** implements the T-TAbs rule:
+**类型抽象** 实现 T-TAbs 规则：
 
 \\[ \frac{\Gamma, \alpha \vdash e \Rightarrow A}{\Gamma \vdash \Lambda \alpha. e \Rightarrow \forall \alpha. A} \text{(T-TAbs)} \\]
 
@@ -252,7 +252,7 @@ The inference function delegates to specialized methods that implement individua
 #![function!("system-f/src/typecheck.rs", BiDirectional::infer_tabs)]
 ```
 
-**Type Application** uses the T-TApp rule:
+**类型应用** 使用 T-TApp 规则：
 
 \\[ \frac{\Gamma \vdash e \Rightarrow \forall \alpha. A}{\Gamma \vdash e[B] \Rightarrow [B/\alpha]A} \text{(T-TApp)} \\]
 
@@ -260,105 +260,105 @@ The inference function delegates to specialized methods that implement individua
 #![function!("system-f/src/typecheck.rs", BiDirectional::infer_tapp)]
 ```
 
-Each method includes comments linking it to the formal typing rule it implements, making the correspondence between theory and implementation explicit.
+每个方法都包含将其链接到所实现的形式类型规则的注释，使理论与实现之间的对应关系明确。
 
-### Checking Rules
+### 检查规则
 
-The checking mode verifies that expressions conform to expected types. This is where the algorithm can make progress even when types aren't fully determined.
+检查模式验证表达式是否符合预期的类型。通过这种方式，算法即使在类型尚未完全确定的情况下也能取得进展。
 
 ```rust
 #![function!("system-f/src/typecheck.rs", BiDirectional::check)]
 ```
 
-Checking mode provides specialized handling that takes advantage of known type information to guide the inference process more efficiently. For lambda expressions, when checking \\( \\lambda x:\\tau_1. e \\) against type \\( \\tau_1 \\to \\tau_2 \\), the algorithm can immediately verify that the parameter types match and then recursively check the body \\( e \\) against the expected return type \\( \\tau_2 \\). This direct decomposition avoids the need to synthesize types and then verify compatibility.
+检查模式提供了专门的推理方式，利用已知的类型信息更高效地引导推理过程。对于 lambda 表达式，当将 \\( \\lambda x:\\tau_1. e \\) 与类型 \\( \\tau_1 \\to \\tau_2 \\) 进行核对时，算法可以立即验证参数类型是否匹配，然后递归地将表达式体 \\( e \\) 与预期返回类型 \\( \\tau_2 \\) 进行核对。这种直接分解避免了先综合类型再验证兼容性的步骤。
 
-When checking against universal types \\( \\forall\\alpha. \\tau \\), the algorithm introduces the type variable \\( \\alpha \\) into the context and then checks the expression against the instantiated type \\( \\tau \\). This approach ensures that the universal quantification is handled correctly while maintaining the scoping discipline required for sound type checking. When direct checking strategies are not applicable to the current expression and expected type combination, the algorithm falls back to a synthesis-plus-subtyping approach, where it first synthesizes a type for the expression and then verifies that this synthesized type is a subtype of the expected type.
+当将表达式与全称类型 \\( \\forall\\alpha. \\tau \\) 进行核实时，算法会将类型变量 \\( \\alpha \\) 引入到上下文中，然后将表达式与实例化后的类型 \\( \\tau \\) 进行核对。这种方法确保正确处理全称量化，同时保持合理类型检查所需的域限制规则。当当前的表达式与预期类型的组合不适用直接检查策略时，算法会回退到综合加子类型的方法：首先综合出表达式的类型，然后验证该综合类型是否为预期类型的子类型。
 
-## Subtyping and Instantiation
+## 子类型与实例化
 
-### Subtyping Relations
+### 子类型关系
 
-System F includes a  subtyping system that handles the relationships between polymorphic types. The key insight is that `∀α. τ` is more general than any specific instantiation of `τ`.
+System F 包含一个子类型系统，用于处理多态类型之间的关系。其核心思想在于 `∀α. τ` 比任何 `τ` 的具体实例化都更通用。
 
 ```rust
 #![function!("system-f/src/typecheck.rs", BiDirectional::subtype)]
 ```
 
-The subtyping rules capture several essential relationships that govern type compatibility in System F. Function types exhibit the classic contravariant-covariant pattern, where a function that accepts more general arguments and returns more specific results is considered a subtype of a function with more specific argument requirements and more general return types. This means that a function of type \\( A_1 \\to B_1 \\) is a subtype of \\( A_2 \\to B_2 \\) when \\( A_2 \\leq A_1 \\) (contravariant in arguments) and \\( B_1 \\leq B_2 \\) (covariant in results).
+子类型规则捕获了在 System F 中支配类型兼容性的几个关键关系。函数类型表现出经典的逆变-协变模式：接受更一般参数并返回更具体结果的函数，被视为接受更具体参数并返回更一般结果的函数的子类型。这意味着类型 \\( A_1 \\to B_1 \\) 是 \\( A_2 \\to B_2 \\) 的子类型，当且仅当 \\( A_2 \\leq A_1 \\)（参数逆变）且 \\( B_1 \\leq B_2 \\)（结果协变）。
 
-Universal quantification follows the principle that \\( \\forall\\alpha. \\tau_1 \\leq \\tau_2 \\) holds if \\( \\tau_1 \\leq \\tau_2 \\) when \\( \\alpha \\) is instantiated with a fresh existential variable, effectively allowing polymorphic types to be related through their instantiations. When subtyping involves existential variables, the algorithm must solve constraints about what these variables should be instantiated to in order to satisfy the subtyping relationship, often leading to the generation of additional constraints that propagate through the system.
+全称量化遵循的原则是：\\( \\forall\\alpha. \\tau_1 \\leq \\tau_2 \\) 成立，当且仅当在将 \\( \\alpha \\) 实例化为一个全新的存在变量后 \\( \\tau_1 \\leq \\tau_2 \\) 成立。这实际上允许通过多态类型的实例化来关联它们。当子类型涉及存在变量时，算法必须解决关于这些变量应如何实例化才能满足子类型关系的约束，这通常会生成额外的约束并在系统中传播。
 
-### Variable Instantiation
+### 变量实例化
 
-The instantiation judgments handle the core complexity of polymorphic type checking. When we have constraints like `^α ≤ τ` (an existential variable should be at most as general as some type), we need to find appropriate instantiations.
+实例化判定处理了多态类型检查中的核心复杂性。当我们遇到诸如 `^α ≤ τ`（存在变量应最多与某个类型一样通用）这样的约束时，需要找到适当的实例化。
 
 ```rust
 #![function!("system-f/src/typecheck.rs", BiDirectional::inst_l)]
 ```
 
-Left instantiation (`inst_l`) handles cases where the existential variable is on the left side of a constraint. This typically means we're looking for the most general type that satisfies the constraint.
+左实例化（`inst_l`）处理存在变量在约束左侧的情况。这通常意味着我们在寻找满足该约束的最一般类型。
 
 ```rust
 #![function!("system-f/src/typecheck.rs", BiDirectional::inst_r)]
 ```
 
-Right instantiation (`inst_r`) handles the dual case where the existential variable is on the right. This typically means we're looking for the most specific type that satisfies the constraint.
+右实例化（`inst_r`）处理存在变量在右侧的互补情况。这通常意味着我们在寻找满足该约束的最具体类型。
 
-The instantiation algorithms include careful handling of several complex scenarios that arise during constraint solving. The reach relationship occurs when two existential variables are constrained against each other, requiring the algorithm to determine which variable should be solved in terms of the other while maintaining the proper ordering constraints. Arrow type instantiation requires breaking function types apart into their component argument and return types, creating separate instantiation constraints for each component that must be solved consistently.
+实例化算法仔细处理了约束求解过程中出现的若干复杂情形。当两个存在变量相互约束时出现“可达”关系，要求算法决定哪个变量应基于另一个变量进行求解，同时保持适当的顺序约束。箭头类型实例化需要将函数类型分解为其参数和返回值类型，并为每个分量创建独立的实例化约束，这些约束必须一致地求解。
 
-The interaction between instantiation and universal quantification presents particular challenges, as the algorithm must ensure that polymorphic types are instantiated correctly while preserving the scoping discipline that prevents type variables from escaping their intended scope. These cases require  constraint management to ensure that all relationships are maintained throughout the solving process.
+实例化与全称量化之间的交互带来了特殊的挑战，因为算法必须确保多态类型被正确实例化，同时保持域限制规则，防止类型变量逃逸出其预期作用域。这些情况需要精细的约束管理，以确保在求解过程中维护所有关系。
 
-### Occurs Check
+### 出现检查
 
-A critical component of sound type inference is the occurs check, which prevents infinite types from arising during unification. When solving constraints like `^α := τ`, we must ensure that `α` does not occur within `τ`, as this would create a cyclic type.
+健全类型推断的一个关键组成部分是发生检查（occurs check），它可以防止在合一过程中产生无限类型。在求解诸如 `^α := τ` 这样的约束时，我们必须确保 `α` 不在 `τ` 中出现，否则会形成循环类型。
 
 ```rust
 #![function!("system-f/src/typecheck.rs", BiDirectional::occurs_check)]
 ```
 
-The occurs check is applied during the InstLSolve and InstRSolve cases of instantiation. Without this check, the type system could accept programs that would lead to infinite types, violating the decidability of type checking.
+发生检查在实例化的 InstLSolve 和 InstRSolve 情形中应用。没有这个检查，类型系统可能会接受导致无限类型的程序，从而破坏类型检查的可判定性。
 
-### Application Inference
+### 应用推断
 
-Function application in System F requires careful handling because the function type might not be immediately apparent. The `infer_app` judgment implements the T-AppArrow and T-AppEVar rules defined earlier:
+System F 中的函数应用需要仔细处理，因为函数类型可能并非显而易见。`infer_app` 判定实现了前面定义的 T-AppArrow 和 T-AppEVar 规则：
 
 ```rust
 #![function!("system-f/src/typecheck.rs", BiDirectional::infer_app)]
 ```
 
-The implementation handles two core application scenarios through distinct inference rules. The T-AppArrow rule applies when the function has a known arrow type \\( A \\to B \\), allowing the algorithm to check the argument against \\( A \\) and return \\( B \\) as the result type. This straightforward case corresponds to the `Type::Arrow` pattern in the implementation and represents the standard function application scenario.
+该实现通过不同的推理规则处理两个核心的应用场景。T-AppArrow 规则适用于函数具有已知箭头类型 \\( A \\to B \\) 的情况，允许算法将参数与 \\( A \\) 进行核对，并返回 \\( B \\) 作为结果类型。这个简单的情形对应于实现中的 `Type::Arrow` 模式，代表了标准的函数应用场景。
 
-The T-AppEVar rule handles the more complex case where the function type is an existential variable \\( \\hat{\\alpha} \\). In this situation, the algorithm instantiates the existential variable as \\( \\hat{\\alpha_1} \\to \\hat{\\alpha_2} \\) with fresh existential variables, then checks the argument against \\( \\hat{\\alpha_1} \\) and returns \\( \\hat{\\alpha_2} \\) as the result type. This corresponds to the `Type::ETVar` case and enables type inference even when the function type is initially unknown.
+T-AppEVar 规则处理函数类型为存在变量 \\( \\hat{\\alpha} \\) 的更复杂情况。在这种情况下，算法将存在变量实例化为 \\( \\hat{\\alpha_1} \\to \\hat{\\alpha_2} \\)，其中包含全新的存在变量，然后将参数与 \\( \\hat{\\alpha_1} \\) 进行核对，并返回 \\( \\hat{\\alpha_2} \\) 作为结果类型。这对应于 `Type::ETVar` 情形，使得即使函数类型最初未知时也能进行类型推断。
 
-When the function has a polymorphic `Forall` type, the instantiation is handled through the subtyping mechanism using the SubAllL rule rather than directly in application inference. This design choice ensures soundness by routing polymorphic instantiation through the well-established subtyping infrastructure and follows the standard bidirectional algorithm design patterns.
+当函数具有多态的 `Forall` 类型时，实例化通过子类型机制（使用 SubAllL 规则）来处理，而不是直接在应用推断中处理。这种设计选择确保了健全性，将多态实例化路由到已建立好的子类型基础设施中，并遵循标准的双向算法设计模式。
 
-## Error Handling
+## 错误处理
 
-Our implementation provides comprehensive error reporting that distinguishes between parse errors and type errors. Parse errors use source-located reporting with ariadne, while type errors provide contextual information about the expressions being typed.
+我们的实现提供了全面的错误报告，能区分解析错误和类型错误。解析错误使用基于源位置的 ariadne 报告，而类型错误则提供被推断表达式及其类型的上下文信息。
 
 ```rust
 #![enum!("system-f/src/errors.rs", TypeError)]
 ```
 
-The type error system includes expression context to help developers understand where failures occur during type checking. Each error variant includes an `expr` field that stores the expression being typed when the error occurred, providing valuable debugging information.
+类型错误系统包含了表达式上下文，帮助开发者理解类型检查过程中失败的位置。每个错误变体都包含一个 `expr` 字段，存储着错误发生时正在被推断类型的表达式，这为调试提供了宝贵信息。
 
-Parse errors receive enhanced treatment with source location information for precise error reporting:
+解析错误得到了增强处理，带有源位置信息以实现精确的错误报告：
 
 ```rust
 #![enum!("system-f/src/errors.rs", ParseError)]
 ```
 
-This dual approach ensures that syntax errors receive precise source location feedback while type errors focus on logical relationships between expressions and types.
+这种双管齐下的方法确保语法错误能够获得精确的源位置反馈，而类型错误则聚焦于表达式与类型之间的逻辑关系。
 
-## End-to-end
+## 端到端验证
 
-To demonstrate the complete System F implementation with all the modular typing rules working together, consider this lambda expression that doubles its integer argument:
+为了展示完整的 System F 实现，以及所有模块化类型规则如何协同工作，考虑以下对整数参数进行加倍的 lambda 表达式：
 
 ```bash
 $ cargo run -- check "\x : Int -> x + x"
 ```
 
-The system produces the following output showing the complete inference process:
+系统会输出以下完整的推导过程：
 
 ```
 Parsed expression: Abs("x", Int, BinOp(Add, Var("x"), Var("x")))
@@ -379,12 +379,12 @@ InfLam:  ⊢ Abs("x", Int, BinOp(Add, Var("x"), Var("x"))) =>  ⊢ Abs("x", Int,
       InstRSolve: ^α0, x: Int ⊢ Int :=< ^α0 => ^α0 = Int, x: Int
 ```
 
-The final result shows `Final type: Int -> Int`, correctly inferring that this lambda expression is a function from integers to integers! The existential variable `^α0` in the proof tree gets resolved to `Int` through the constraint solving process, and the final type application ensures all existential variables are properly substituted in the output.
+最终结果显示 `Final type: Int -> Int`，正确推断出该 lambda 表达式是一个从整数到整数的函数！证明树中的存在变量 `^α0` 通过约束求解过程被解析为 `Int`，而最终的类型应用确保了所有存在变量均在输出中得到恰当替换。
 
-For non-trivial expressions, the constraint solving process may involve more complex reasoning and may require additional inference steps but using the proof tree method we can visualize the inference steps and understand the constraints being solved. This is a very powerful technique.
+对于非平凡表达式，约束求解过程可能涉及更复杂的推理，并需要额外的推导步骤；但借助证明树方法，我们可以可视化推导步骤并理解被求解的约束。这是一种非常强大的技术。
 
-## Mission Accomplished
+## 任务完成
 
-And there we have it! A complete bidirectional type checker for System F with polymorphic types, existential variables, and  constraint solving! The algorithm handles the complex interplay between synthesis and checking modes, managing existential variables and subtyping relationships with the precision needed for a production-quality type system.
+好了，就这样！一个完整的双向类型检查器，支持 System F 的多态类型、存在变量和约束求解！该算法处理了综合模式与检查模式之间复杂的交互，以生产级类型系统所需的精度管理存在变量和子类型关系。
 
-The bidirectional approach transforms what could be an overwhelming inference problem into a systematic, decidable process that gives us both powerful expressiveness and reliable type safety. System F's polymorphism opens up a whole new world of type-safe programming that feels almost magical once you see it in action!
+双向方法将一个原本可能令人望而却步的推导问题转化为一个系统化、可判定的过程，既提供了强大的表达能力，又保证了可靠的类型安全性。System F 的多态性开启了一个全新的类型安全编程世界，一旦你亲眼目睹它的运作，简直就像魔法一样！

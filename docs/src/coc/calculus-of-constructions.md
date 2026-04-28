@@ -1,131 +1,131 @@
-# Calculus of Constructions
+# 构造演算
 
-The Calculus of Constructions (or **CoC** for short) represents the pinnacle of the lambda cube, occupying the most expressive corner where all three dimensions of abstraction converge. This system unifies terms, types, and kinds into a single syntactic framework, eliminating the artificial boundaries that separate computation from logic and enabling types to express arbitrary mathematical propositions with computational content.
+构造演算（简称 **CoC**）代表了 lambda 立方体的顶峰，占据着所有三个抽象维度交汇处最具表达能力的角落。该体系将项、类型和种类统一到单一的句法框架中，消除了分隔计算与逻辑的人为界限，使类型能够表达具有计算内容的任意数学命题。
 
-Where previous systems in our exploration maintained strict hierarchies between terms, types, and kinds, CoC dissolves these distinctions. Types become first-class citizens that can be manipulated, passed to functions, and returned as results. This unification enables unprecedented expressiveness while maintaining logical consistency through a carefully constructed universe hierarchy.
+在我们先前探索的体系中，项、类型和种类之间保持着严格的层级关系，而 CoC 则消解了这些区别。类型成为一等公民，可以被操作、传递给函数并作为结果返回。这种统一在通过精心构建的宇宙层级保持逻辑一致性的同时，实现了前所未有的表达能力。
 
-## Position in the Lambda Cube
+## 在 Lambda 立方体中的位置
 
-CoC sits at vertex λ2ωP of the lambda cube, combining all three forms of abstraction that define the cube's dimensions:
+CoC 位于 lambda 立方体的顶点 λ2ωP，结合了定义立方体三个维度的所有三种抽象形式：
 
-**Terms depending on Types (\\( \uparrow\\)-axis)**: Polymorphic functions like \\(\mathsf{id} : \forall A : \mathsf{Type}.\; A \to A \\) where terms abstract over type parameters, enabling parametric polymorphism across all types in the system.
+**依赖于类型的项（\\( \uparrow\\)-轴）**：多态函数如 \\(\mathsf{id} : \forall A : \mathsf{Type}.\; A \to A \\)，其中项对类型参数进行抽象，实现了系统中所有类型上的参数多态。
 
-**Types depending on Types (\\( \nearrow \\)-axis)**: Type constructors like \\( \mathsf{List} : \mathsf{Type} \to \mathsf{Type} \\) and \\( \Sigma : (A : \mathsf{Type}) \to (A \to \mathsf{Type}) \to \mathsf{Type} \\) where types can abstract over other types, enabling higher-kinded polymorphism and type-level computation.
+**依赖于类型的类型（\\( \nearrow \\)-轴）**：类型构造子如 \\( \mathsf{List} : \mathsf{Type} \to \mathsf{Type} \\) 和 \\( \Sigma : (A : \mathsf{Type}) \to (A \to \mathsf{Type}) \to \mathsf{Type} \\)，其中类型可以对其他类型进行抽象，实现了高阶类型多态和类型级计算。
 
-**Types depending on Terms (\\( \rightarrow \\) -axis)**: Dependent types like \\( \mathsf{Vec} : \mathsf{Nat} \to \mathsf{Type} \to \mathsf{Type} \\) where the structure of types depends on the values of terms, enabling precise specification of data structure properties and program invariants.
+**依赖于项的类型（\\( \rightarrow \\)-轴）**：依赖类型如 \\( \mathsf{Vec} : \mathsf{Nat} \to \mathsf{Type} \to \mathsf{Type} \\)，其中类型的结构依赖于项的值，实现了对数据结构属性和程序不变量的精确规约。
 
-The convergence of these three dimensions creates a system of unprecedented expressiveness. Unlike System Fω, which provides  polymorphism but maintains a clear separation between terms and types, the CoC allows types to depend on arbitrary term-level computations while maintaining decidable type checking through normalization properties.
+这三个维度的汇聚创造了一个具有空前表达能力的体系。与提供多态性但保持项与类型清晰分离的 System Fω 不同，CoC 允许类型依赖于任意的项级计算，同时通过正规化性质保持可判定的类型检查。
 
-## The Curry-Howard Correspondence
+## Curry-Howard 对应
 
-The CoC realizes the profound connection between computation and logic known as the Curry-Howard correspondence. In this correspondence, types represent logical propositions and terms represent constructive proofs of those propositions. This isomorphism enables the same syntactic framework to express both programs and mathematical theorems with their proofs.
+CoC 实现了计算与逻辑之间深刻联系，即 Curry-Howard 对应。在该对应中，类型代表逻辑命题，项代表这些命题的构造性证明。这种同构使得同一个句法框架能够同时表达程序以及带有证明的数学定理。
 
-**Propositions as Types**: Every logical statement corresponds to a type. The proposition "for all natural numbers n, n + 0 = n" becomes the type `∀n : Nat. Eq Nat (plus n zero) n`, where `Eq` represents propositional equality.
+**命题即类型**：每个逻辑陈述对应一个类型。命题“对所有自然数 n，n + 0 = n”变为类型 `∀n : Nat. Eq Nat (plus n zero) n`，其中 `Eq` 表示命题相等性。
 
-**Proofs as Programs**: Every constructive proof corresponds to a program that computes a witness for the proposition. A proof of the above proposition becomes a function that takes a natural number and produces evidence that adding zero preserves the number.
+**证明即程序**：每个构造性证明对应一个程序，该程序为命题计算出一个证据。上述命题的证明变成一个函数，该函数接受一个自然数并产生一个证据，证明加零保持数值不变。
 
-**Proof Checking as Type Checking**: Verifying the correctness of a mathematical proof reduces to checking that a program has the expected type. The type checker becomes a proof checker, ensuring that purported proofs actually establish their claimed propositions.
+**证明检查即类型检查**：验证数学证明的正确性归结为检查一个程序是否具有预期类型。类型检查器变成证明检查器，确保所谓的证明实际上建立了其所声称的命题。
 
-This correspondence transforms programming into theorem proving and theorem proving into programming, creating a unified framework where mathematical rigor and computational efficiency coexist naturally.
+这种对应将编程转化为定理证明，将定理证明转化为编程，创造了一个统一的框架，其中数学严谨性与计算效率自然共存。
 
-## Dependent Types: The Foundation
+## 依赖类型：基础
 
-The key innovation that enables the CoC' expressiveness is the **dependent product type**, or **Π-type**. This construct generalizes the familiar function arrow to create types whose structure depends on the values they abstract over.
+使 CoC 具备如此表达能力的核心创新是**依赖乘积类型**，或称 **Π-类型**。该构造将熟悉的函数箭头推广，创建出结构依赖于所抽象值的类型。
 
-### Dependent Products (Π-Types)
+### 依赖积（Π-类型）
 
-The dependent product type \\( \Pi x : A.\; B \\) represents functions where the return type \\( B \\) can depend on the input value \\( x \\). When the variable \\( x \\) does not appear in \\( B \\), this reduces to the simple function type \\( A \to B \\). When \\( x \\) does appear in \\( B \\), we obtain true dependency where the return type varies based on the input value.
+依赖乘积类型 \\( \Pi x : A.\; B \\) 表示返回值类型 \\( B \\) 可以依赖于输入值 \\( x \\) 的函数。当变量 \\( x \\) 未出现在 \\( B \\) 中时，这简化为简单的函数类型 \\( A \to B \\)。当 \\( x \\) 出现在 \\( B \\) 中时，我们得到真正的依赖关系，其中返回值类型根据输入值而变化。
 
 ```lean
--- Simple function type (non-dependent)
+-- 简单函数类型（非依赖）
 add : Nat → Nat → Nat
 
--- Dependent function type
+-- 依赖函数类型
 vec : (n : Nat) → Type → Type
 create_vec : (n : Nat) → (A : Type) → vec n A
 
--- The return type depends on the input value n
+-- 返回值类型依赖于输入值 n
 lookup : (n : Nat) → (A : Type) → (v : vec n A) → (i : Fin n) → A
 ```
 
-The dependent product enables precise type-level specifications that capture program invariants directly in the type system. A vector lookup function can guarantee at compile time that the index falls within the vector bounds, eliminating runtime bounds checking while maintaining type safety.
+依赖乘积使得能够在类型系统中直接捕捉程序不变量的精确类型级规约。向量查找函数可以在编译时保证索引在向量边界内，从而在保持类型安全的同时消除运行时边界检查。
 
-### Dependent Sums (Σ-Types)
+### 依赖和（Σ-类型）
 
-The dependent sum type \\( \Sigma x : A.\; B \\) represents pairs where the type of the second component depends on the value of the first component. This enables existential quantification and the creation of heterogeneous data structures with precise type relationships.
+依赖和类型 \\( \Sigma x : A.\; B \\) 表示对，其中第二个分量的类型依赖于第一个分量的值。这使得存在量化以及创建具有精确类型关系的异构数据结构成为可能。
 
 ```lean
--- Dependent pair: a number and a vector of that length
+-- 依赖对：一个数字和该长度的向量
 sized_vec : Type := Σ n : Nat. vec n Int
 
--- Create a sized vector
+-- 创建一个有大小限制的向量
 example_vec : sized_vec := ⟨3, [1, 2, 3]⟩
 
--- Pattern match to extract components
+-- 模式匹配提取分量
 process_vec : sized_vec → Int :=
-  fun ⟨n, v⟩ => sum_vector v  -- Type checker knows v has length n
+  fun ⟨n, v⟩ => sum_vector v  -- 类型检查器知道 v 的长度为 n
 ```
 
-Dependent sums enable the expression of existential propositions where we assert the existence of a value with specific properties without revealing the exact value, while maintaining the ability to use that value computationally.
+依赖和可以表达存在命题，其中我们断言存在具有特定属性的值而不揭示确切值，同时保持对该值的计算使用能力。
 
-## Universe Hierarchy and Logical Consistency
+## 宇宙层级与逻辑一致性
 
-The power of dependent types raises fundamental questions about self-reference and logical consistency. If types can contain arbitrary values and types themselves are values, what prevents the construction of paradoxical types like the set of all sets that do not contain themselves?
+依赖类型的力量引发了关于自指和逻辑一致性的根本问题。如果类型可以包含任意值且类型本身也是值，那么什么能阻止构造像“所有不包含自身的集合的集合”这样的悖论类型？
 
-The CoC addresses this challenge through a **universe hierarchy** that stratifies types by their complexity level. Each universe contains types of bounded complexity, and the universe hierarchy prevents the construction of self-referential types that would lead to logical inconsistency.
+CoC 通过**宇宙层级**来解决这一挑战，该层级按复杂程度对类型进行分层。每个宇宙包含有界复杂性的类型，而宇宙层级防止了会导致逻辑不一致的自指类型的构造。
 
-### Universe Levels
+### 宇宙层次
 
 ```lean
--- Universe hierarchy
-Prop : Type          -- Propositions with no computational content
-Type : Type 1        -- Small types (Nat, Bool, etc.)
-Type 1 : Type 2      -- Types of type constructors
-Type 2 : Type 3      -- Higher-order type constructors
--- ... infinite hierarchy
+-- 宇宙层级
+Prop : Type          -- 没有计算内容的命题
+Type : Type 1        -- 小型类型（Nat、Bool 等）
+Type 1 : Type 2      -- 类型构造子的类型
+Type 2 : Type 3      -- 高阶类型构造子的类型
+-- ... 无限层级
 ```
 
-**Prop**: The universe of propositions represents logical statements that, when proven, carry no computational information beyond their truth. Proof irrelevance means that all proofs of the same proposition are considered equal, enabling efficient compilation where proof terms can be erased.
+**Prop**：命题宇宙代表逻辑陈述，这些陈述一旦被证明，除了其真值外不携带任何计算信息。证明无关性意味着同一命题的所有证明被视为等价，从而能够高效编译，证明项可以被擦除。
 
-**Type n**: The universe hierarchy `Type 0, Type 1, Type 2, ...` represents computational types at increasing levels of abstraction. Types like `Nat` and `Bool` inhabit `Type 0`, while type constructors like `List : Type 0 → Type 0` inhabit `Type 1`.
+**类型 n**：宇宙层级 `Type 0, Type 1, Type 2, ...` 表示抽象程度逐步提高的计算类型。像 `Nat` 和 `Bool` 这样的类型位于 `Type 0`，而像 `List : Type 0 → Type 0` 这样的类型构造器位于 `Type 1`。
 
-**Universe Polymorphism**: Definitions can be polymorphic over universe levels, enabling generic constructions that work across the entire hierarchy. The identity function can be defined once and work for types at any universe level.
+**宇宙多态性**：定义可以在宇宙层级上是多态的，从而允许构建在整个层级上都能工作的泛型结构。恒等函数可以只定义一次，并适用于任何宇宙层级上的类型。
 
-The universe hierarchy maintains **predicativity** for computational types, meaning that a type constructor at level n can only quantify over types at levels strictly less than n. This restriction prevents the construction of large elimination paradoxes while maintaining logical consistency.
+宇宙层级对计算类型保持了**谓词性**，这意味着位于层级 n 的类型构造器只能量化严格小于 n 的层级上的类型。这一限制防止了大规模消去悖论的构建，同时保持了逻辑一致性。
 
-However, the proposition universe `Prop` is **impredicative**, allowing quantification over arbitrary types including propositions themselves. This impredicativity enables the expression of powerful logical principles while maintaining consistency through proof irrelevance.
+然而，命题宇宙 `Prop` 是**非谓词**的，允许量化任意类型，包括命题本身。这种非谓词性通过证明无关性在保持一致性的同时，能够表达强大的逻辑原理。
 
-## Implementation Architecture
+## 实现架构
 
-Our Calculus of Constructions implementation demonstrates how these theoretical concepts translate into practical type checking algorithms and programming language features.
+我们的构造演算（CoC）实现演示了这些理论概念如何转化为实际的类型检查算法和编程语言特性。
 
 ```rust
 #![enum!("coc/src/ast.rs", Term)]
 ```
 
-The term language unifies all syntactic categories into a single framework where the same constructs serve multiple roles depending on context. Lambda abstractions create both functions and proof terms, applications represent both function calls and modus ponens, and products represent both function types and universal quantification.
+术语语言将所有语法范畴统一到一个单一框架中，相同的构造根据上下文扮演不同角色。Lambda 抽象可以创建函数和证明项，应用既可以表示函数调用也可以表示肯定前件，而乘积既可以表示函数类型也可以表示全称量化。
 
-Just as before, our implementation uses  **bidirectional type checking** that splits type checking into complementary synthesis and checking modes.
+与之前一样，我们的实现采用了**双向类型检查**，将类型检查分为互补的综合模式与检查模式。
 
-1. **Synthesis Mode**: Given a term, determines its type by analyzing the term's structure and propagating type information through the syntax tree.
-1. **Checking Mode**: Given a term and an expected type, verifies that the term inhabits the expected type by checking compatibility modulo definitional equality.
+1. **综合模式**：给定一个项，通过分析项的结构并在语法树中传播类型信息来确定其类型。
+2. **检查模式**：给定一个项和期望类型，通过检查在定义相等性下的兼容性来验证该项是否符合期望类型。
 
-### Constraint-Based Inference
+### 基于约束的推理
 
-The system includes advanced constraint solving for implicit argument inference and unification of dependent types. Meta-variables represent unknown types that get resolved through unification with complex dependency tracking.
+系统包含高级约束求解，用于隐式参数推断和依赖类型的合一。元变量表示未知类型，通过带有复杂依赖追踪的合一得到求解。
 
 ```rust
 #![enum!("coc/src/solver.rs", Constraint)]
 ```
 
-The constraint solver handles higher-order unification patterns, universe level constraints, and delayed constraint resolution to enable practical programming with dependent types while maintaining theoretical soundness.
+约束求解器处理高阶合一模式、宇宙层级约束和延迟的约束求解，从而在保持理论正确性的同时支持依赖类型的实用编程。
 
-## Theoretical Significance
+## 理论意义
 
-The CoC is more than just another extension of System-F; it has a profound theoretical significance. It essentially demonstrates the fundamental unity between computation and mathematics. Which is one of the most profound ideas of theoretical computer science.
+构造演算（CoC）不仅仅是 System-F 的又一个扩展；它具有深远的理论意义。它本质上是计算与数学之间基本统一性的体现，这也是理论计算机科学中最深刻的思想之一。
 
-By showing that every constructive mathematical proof corresponds to a program and every program type-checks according to logical principles, CoC bridges the gap between formal verification and practical programming. And thats pretty amazing!
+通过证明每一个构造性数学证明都对应于一个程序，并且每一个程序都根据逻辑原理通过类型检查，CoC 架起了形式验证与实用编程之间的桥梁。这确实非常了不起！
 
-The system also provides a foundation for interactive theorem proving, where mathematical proofs are constructed through programming and verified through type checking. Proof assistants like Coq and Lean build upon the theoretical foundations established by the CoC, demonstrating the practical value of this unification.
+该系统还为交互式定理证明提供了基础，其中数学证明通过编程构建，并通过类型检查进行验证。Coq 和 Lean 等证明助手建立在 CoC 奠定的理论基础之上，展示了这种统一性的实用价值。
 
-Although Coq is interesting historically, we're going to mostly be inspired by the Lean 4 model and adopt a small version of its type system and syntax in our toy implementation.
+尽管 Coq 在历史上很有趣，但我们主要借鉴 Lean 4 模型，并在我们的玩具实现中采用其类型系统和语法的一个小型版本。

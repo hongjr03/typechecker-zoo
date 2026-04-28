@@ -1,99 +1,99 @@
-# Examples
+# 示例
 
-System F's power lies in its ability to express polymorphic computations that work across different types while maintaining type safety. This chapter explores a range of examples that demonstrate the expressive capabilities of our implementation, from simple polymorphic functions to complex higher-rank polymorphism scenarios.
+System F 的强大之处在于它能够表达跨不同类型工作的多态计算，同时保持类型安全。本章探讨一系列示例，展示我们实现的表达能力，从简单的多态函数到复杂的高阶多态场景。
 
-Our examples are drawn from real test cases in the implementation, showing both the syntax our parser accepts and the types our bidirectional algorithm infers. These examples illustrate the key features of System F and demonstrate how the type system guides program construction.
+我们的示例来自实现中的真实测试用例，既展示了解析器接受的语法，也展示了双向类型推理算法推断出的类型。这些示例说明了 System F 的关键特性，并演示了类型系统如何指导程序构造。
 
-## Basic Polymorphic Functions
+## 基本多态函数
 
-The fundamental building block of System F is the polymorphic identity function. This simple example demonstrates universal quantification and type application in their most basic form.
+System F 的基本构建块是多态恒等函数。这个简单示例以最基本的形式展示了全称量化和类型应用。
 
-Let's examine how our implementation handles the core examples from the test suite:
+让我们看看我们的实现如何处理测试套件中的核心示例：
 
 ```rust
 #![source_file!("system-f/tests/basic.fun")]
 ```
 
-These test cases reveal several important aspects of our System F implementation:
+这些测试用例揭示了我们的 System F 实现的几个重要方面：
 
-### Literal Types and Basic Functions
+### 字面量类型与基本函数
 
-The simplest cases involve literal values and monomorphic functions, where our bidirectional algorithm produces clean, precise types:
+最简单的情况涉及字面值和单态函数，我们的双向算法能生成清晰、精确的类型：
 
-- `42 : Int` - Integer literals immediately receive the base type `Int`
-- `true : Bool` and `false : Bool` - Boolean literals similarly receive their base types
-- `\x : Int -> x : Int -> Int` - Monomorphic lambda expressions receive concrete function types
+- `42 : Int` —— 整数字面量立即获得基本类型 `Int`
+- `true : Bool` 和 `false : Bool` —— 布尔字面量同样获得它们的基本类型
+- `\x : Int -> x : Int -> Int` —— 单态的 lambda 表达式获得具体的函数类型
 
-The type inference algorithm resolves all constraints to produce the most specific types possible. When we provide explicit type annotations, the algorithm can determine the complete function type without ambiguity.
+类型推理算法解决所有约束，以产生尽可能具体的类型。当我们提供显式类型注解时，算法能无歧义地确定完整的函数类型。
 
-### Type Annotations and Explicit Typing
+### 类型注解与显式类型标注
 
-System F requires explicit type annotations on lambda parameters, and our bidirectional algorithm infers complete function types:
+System F 要求对 lambda 参数进行显式类型注解，我们的双向算法则会推断出完整的函数类型：
 
-- `\x : Int -> x` produces the type `Int -> Int`
-- `(\x : Int -> x) 42` applies this function to produce type `Int`
+- `\x : Int -> x` 产生类型 `Int -> Int`
+- `(\x : Int -> x) 42` 应用这个函数，产生类型 `Int`
 
-These examples show how the algorithm handles the interaction between explicit annotations and type inference. The parameter type is fixed by annotation, and the algorithm infers that the return type must match the parameter type since we're returning the parameter unchanged.
+这些示例展示了算法如何处理显式注解与类型推理之间的交互。参数类型由注解固定，由于我们原样返回参数，算法推断返回类型必须与参数类型相匹配。
 
-### Universal Quantification in Practice
+### 全称量化的实际应用
 
-The true power of System F emerges with universal quantification. The polymorphic identity function demonstrates this clearly:
+System F 的真正力量体现在全称量化上。多态恒等函数清晰地展示了这一点：
 
 - `forall a. \x : a -> x : ∀a. a -> a`
 
-This example shows several important aspects of our implementation:
+这个示例展示了我们实现的几个重要方面：
 
-1. **Type Abstraction**: The `forall a.` syntax introduces a type variable into scope
-2. **Polymorphic Parameters**: The parameter `x : a` uses the quantified type variable
-3. **Complete Type Inference**: The algorithm correctly resolves all type constraints to produce the expected polymorphic type
+1. **类型抽象**：`forall a.` 语法将一个类型变量引入作用域
+2. **多态参数**：参数 `x : a` 使用了量化的类型变量
+3. **完整类型推理**：算法正确解析所有类型约束，生成预期的多态类型
 
-### Type Application and Instantiation
+### 类型应用与实例化
 
-Type application allows us to specialize polymorphic functions to specific types:
+类型应用允许我们将多态函数特化为具体类型：
 
 - `(forall a. \x : a -> x) [Int] : Int -> Int`
 - `(forall a. \x : a -> x) [Bool] : Bool -> Bool`
 
-Both applications produce the expected concrete function types, showing that our algorithm correctly instantiates the polymorphic function with the requested types and resolves all type constraints to their final forms.
+这两个应用都产生了预期的具体函数类型，表明我们的算法正确地用请求的类型实例化了多态函数，并将所有类型约束解析为其最终形式。
 
-## Higher-Rank Polymorphism
+## 高阶多态
 
-System F supports higher-rank polymorphism, where polymorphic types can appear in argument positions. This creates functions that accept polymorphic arguments:
+System F 支持高阶多态，其中多态类型可以出现在参数位置。这创建了接受多态参数的函数：
 
 - `\f : (forall a. a -> a) -> f : ^α0 -> ^α1`
 
-This function accepts any argument of type `forall a. a -> a` (a polymorphic identity function) and returns it unchanged. The higher-rank nature means the caller must provide a function that works for *all* types, not just some specific type.
+这个函数接受任何类型为 `forall a. a -> a`（一个多态恒等函数）的参数，并原样返回。高阶性质意味着调用者必须提供一个适用于**所有**类型的函数，而不仅仅是某个特定类型。
 
-The application example demonstrates this in action:
+应用示例展示了这一点的实际运作：
 
 - `(\f : (forall a. a -> a) -> f) (forall a. \x : a -> x) : ^α0`
 
-Here we pass the polymorphic identity function to a function that expects exactly that type signature. This showcases the precision and expressiveness of System F's type system.
+这里我们将多态恒等函数传递给一个恰好期望该类型签名的函数。这展示了 System F 类型系统的精确性和表达能力。
 
-## Nested Type Abstractions
+## 嵌套类型抽象
 
-System F allows multiple type abstractions to be nested, creating functions that are polymorphic in multiple type parameters:
+System F 允许嵌套多个类型抽象，从而创建在多个类型参数上多态的函数：
 
 - `forall a. forall b. \x : a -> \y : b -> x : ∀a. ∀b. a -> b -> a`
 - `forall a. forall b. \x : a -> \y : b -> y : ∀a. ∀b. a -> b -> b`
 
-These examples create functions that:
-1. Are polymorphic in two types `a` and `b`
-2. Accept arguments of those respective types
-3. Return either the first or second argument
+这些示例创建的函数：
+1. 在两种类型 `a` 和 `b` 上是多态的
+2. 接受各自类型的参数
+3. 返回第一个或第二个参数
 
-The `K` and `S` combinators from combinatory logic can be expressed naturally in this style, showing System F's expressiveness for abstract computation. As a fun aside, you express every other function in terms of just `K` and `S`, although in practice this is more of an theoretical curio because its unimaginably inefficient.
+组合子逻辑中的 `K` 和 `S` 组合子可以自然地用这种风格表达，这展示了 System F 对抽象计算的表达能力。有趣的是，你可以仅用 `K` 和 `S` 表达所有其他函数，不过在实际中这更像是一个理论趣闻，因为其效率低得难以想象。
 
-## Complex Polymorphism
+## 复杂多态
 
-More examples demonstrate how System F handles complex combinations of polymorphism and function application:
+更多示例展示了 System F 如何处理多态与函数应用的复杂组合：
 
 - `forall a. \f : (a -> a) -> \x : a -> f x : ∀a. (a -> a) -> a -> a`
 
-This creates a function that:
-1. Is polymorphic in type `a`
-2. Accepts a function `f : a -> a` (an endomorphism on `a`)
-3. Accepts a value `x : a`
-4. Applies the function to the value
+这个函数：
+1. 在类型 `a` 上是多态的
+2. 接受一个函数 `f : a -> a`（`a` 上的自同态）
+3. 接受一个值 `x : a`
+4. 将函数应用于该值
 
-This pattern is fundamental in functional programming and demonstrates how System F naturally expresses higher-order polymorphic functions.
+这种模式在函数式编程中是基础的，并展示了 System F 如何自然地表达高阶多态函数。

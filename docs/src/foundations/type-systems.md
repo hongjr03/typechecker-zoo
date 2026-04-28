@@ -1,67 +1,67 @@
-# Type Systems Overview
+# 类型系统概览
 
-So why do we build type systems? The answer is obviously because they are awesome and intellectually interesting. But second to that, because they are genuinely useful.
+我们为什么要构建类型系统？答案显然是因为它们既酷又有趣，能够激发智力上的思考。但其次，是因为它们确实非常实用。
 
-Let's start with some background; you can technically skip this section and just dive into the code if you fancy, but it is helpful to set up some soft context before we dive into implementation.
+我们先从一些背景知识开始；如果你愿意，技术上可以跳过这一节直接深入代码，但在我们着手实现之前，先搭建一些软背景是有帮助的。
 
-Any discussion of type systems starts with the lambda calculus, a formal system developed by Alonzo Church in the 1930s to express computation. It is the minimal, universal programming language. Its syntax consists of just three elements: variables, function abstractions (a way to define an anonymous function), and function application (calling a function). For instance, the identity function, which simply returns its input, is written as \\( \lambda x. x \\). Despite this simplicity, any computable problem can be expressed and solved within the lambda calculus.
+任何对类型系统的讨论都始于 λ 演算，这是阿隆佐·邱奇（Alonzo Church）在 20 世纪 30 年代为表达计算而开发的一个形式系统。它是最小、最通用的编程语言。其语法仅由三个元素组成：变量、函数抽象（定义匿名函数的方式）和函数应用（调用函数）。例如，恒等函数（直接返回输入的函数）写作 \\( \lambda x. x \\)。尽管简单如此，任何可计算的问题都可以在 λ 演算中表达和求解。
 
-Next, we introduce type systems. A type system is a set of rules that assigns a property, known as a **type**, to the constructs of a program, such as variables, expressions, and functions. The primary purpose is to reduce bugs by preventing operations that don't make sense, like dividing a number by a string. This process of verifying that a program obeys its language's type rules is called type checking. 
+接下来，我们引入类型系统。类型系统是一组规则，用于为程序中的构造（如变量、表达式和函数）赋予一种称为**类型**的属性。其主要目的是通过阻止无意义的操作（例如用数字除以字符串）来减少错误。验证程序是否遵循其语言类型规则的过程称为类型检查。
 
-## A System of Types
+## 类型系统
 
-At the heart of any type system is a set of formal rules for making logical deductions about a program. These deductions are called **judgments**. A judgment is an assertion that a piece of code has a certain property. The most common kind of judgment you will encounter is a **typing judgment**, which asserts that a given expression has a particular type within a specific context. We write this formally using a "turnstile" symbol \\( \vdash \\). 
+任何类型系统的核心都是一组用于对程序进行逻辑推理的形式规则。这些推理被称为**判断**。判断是一个断言，表明某段代码具有某种属性。你最常见的一种判断是**类型判断**，它断言在特定上下文中，给定的表达式具有特定的类型。我们使用“旋转门”符号 \\( \vdash \\) 来形式化地书写它。
 
-The general form of a typing judgment looks like this:
+类型判断的一般形式如下：
 
 \\[ \Gamma \vdash e : T \\]
 
-This statement is read as, "In the context \\( \Gamma \\), the expression \\( e \\) has the type \\( T \\)." The context \\( \Gamma \\) is essentially a map from variable names to their types. For example, \\( x: \text{Int}, f: \text{Bool} \to \text{Int} \\) is a context where the variable \\( x \\) has type \\( \text{Int} \\) and \\( f \\) has a function type from \\( \text{Bool} \\) to \\( \text{Int} \\). As we enter deeper scopes in a program, like inside a function body, we extend the context with new variable bindings. This is often written as \\( \Gamma, x:T \\), which means "the context \\( \Gamma \\) extended with a new binding stating that variable \\( x \\) has type \\( T \\)."
+这句话读作：“在上下文 \\( \Gamma \\) 中，表达式 \\( e \\) 具有类型 \\( T \\)。”上下文 \\( \Gamma \\) 本质上是一个从变量名到它们类型的映射。例如，\\( x: \text{Int}, f: \text{Bool} \to \text{Int} \\) 是一个上下文，其中变量 \\( x \\) 具有类型 \\( \text{Int} \\)，而 \\( f \\) 具有从 \\( \text{Bool} \\) 到 \\( \text{Int} \\) 的函数类型。当我们进入程序中更深的作用域（比如函数体内部）时，我们会用新的变量绑定来扩展上下文。这通常写作 \\( \Gamma, x:T \\)，意思是“上下文 \\( \Gamma \\) 扩展了一个新的绑定，指出变量 \\( x \\) 具有类型 \\( T \\)。”
 
-Typing judgments are derived using **inference rules**. An inference rule states that if you can prove a set of judgments, called the premises, then you can conclude another judgment, called the conclusion. When working with formal type systems, inference rules follow a consistent structural pattern that makes them easier to read and understand. Every rule has the form:
+类型判断是通过**推理规则**推导得出的。推理规则指出，如果你能证明一组称为前提的判断，那么你就可以推论出另一个称为结论的判断。在处理形式类型系统时，推理规则遵循一致的结构模式，使其更易于阅读和理解。每条规则都具有如下形式：
 
-\\[ \frac{\text{premises}}{\text{conclusion}} \text{(Rule-Name)} \\]
+\\[ \frac{\text{前提}}{\text{结论}} \text{(规则名称)} \\]
 
-This notation should be read as: "If all the premises above the line are true, then the conclusion below the line is also true." The premises represent the conditions that must be satisfied, while the conclusion represents what we can deduce when those conditions hold. The rule name provides a convenient label for referencing the rule in discussions and proofs.
+这种记法应理解为：“如果线上方所有前提为真，那么线下方结论也为真。”前提代表必须满足的条件，而结论代表当这些条件成立时我们可以推导出的内容。规则名称提供了一个方便的标签，用于在讨论和证明中引用该规则。
 
-If a rule has no premises, it is an **axiom**, a self-evident truth that requires no prior proof to hold. For example, an axiom rule that establishes the type of the literal zero might look like:
+如果一条规则没有前提，那么它就是一个**公理**，是一个不需要事先证明就成立的自明真理。例如，一个为字面量零确立类型的公理规则可能如下所示：
 
 \\[ \frac{}{\Gamma \vdash 0 : \text{Int}} \text{(T-Zero)} \\]
 
-This rule has no premises above the line, making it an axiom. It simply states that in any context \\( \Gamma \\), the literal \\( 0 \\) has type \\( \text{Int} \\).
+这条规则在线上方没有前提，因此它是一个公理。它简单地指出，在任何上下文 \\( \Gamma \\) 中，字面量 \\( 0 \\) 具有类型 \\( \text{Int} \\)。
 
-These axioms typically handle simple cases like variable lookups or literal values (sometimes called **ground types**). Rules with multiple premises, separated by spacing or explicit conjunction symbols, require all conditions to be satisfied simultaneously before the conclusion can be drawn.
+这些公理通常处理简单的情况，比如变量查找或字面量值（有时称为**基类型**）。具有多个前提的规则，这些前提由空格或显式的合取符号分隔，要求所有条件同时满足后才能得出结论。
 
-A foundational rule in nearly every type system is the variable lookup rule, which lets us find the type of a variable from the context:
+几乎每种类型系统中的一条基础规则是变量查找规则，它让我们能够从上下文中找到变量的类型：
 
 \\[ \frac{x:T \in \Gamma}{\Gamma \vdash x : T} \\]
 
-This rule is not an axiom because it has one premise. It reads: "If the type binding \\( x:T \\) is present in the context \\( \Gamma \\), then we can conclude that in context \\( \Gamma \\), the expression \\( x \\) has type \\( T \\)." It formally defines the action of looking up a variable's type in the current environment.
+这条规则不是公理，因为它有一个前提。它读作：“如果类型绑定 \\( x:T \\) 存在于上下文 \\( \Gamma \\) 中，那么我们可以得出结论：在上下文 \\( \Gamma \\) 中，表达式 \\( x \\) 具有类型 \\( T \\)。”它形式化地定义了在当前环境中查找变量类型的操作。
 
-By defining a collection of these inference rules, we create a complete type system. Each rule defines how to determine the type of a specific kind of expression, like a function call, a literal value, or an if-then-else block. For instance, a rule for function application would require as its premises that we first prove the function itself has a function type \\( T \to U \\) and that its argument has the corresponding input type \\( T \\). If we can prove those premises, the rule allows us to conclude that the entire function application expression has the output type \\( U \\). By repeatedly applying these rules, we can build a derivation tree that starts from axioms about variables and literals and culminates in a single judgment about the type of our entire program, thereby proving it is well-typed.
+通过定义一组这样的推理规则，我们创建了一个完整的类型系统。每条规则定义了如何确定特定种类表达式的类型，比如函数调用、字面量值或 if-then-else 块。例如，一个用于函数应用的规则，其前提要求我们首先证明函数本身具有函数类型 \\( T \to U \\)，并且其参数具有相应的输入类型 \\( T \\)。如果我们能证明这些前提，该规则就允许我们得出结论：整个函数应用表达式具有输出类型 \\( U \\)。通过反复应用这些规则，我们可以构建一棵推导树，从关于变量和字面量的公理开始，最终归结为关于整个程序类型的单一判断，从而证明它是良好类型的。
 
-## Judgements
+## 判断
 
-A common inference rule with multiple premises is the one for function application, which determines the type of a function call. In lambda calculus, this is simply an expression \\( e_1 \ e_2 \\), where \\( e_1 \\) is the function and \\( e_2 \\) is the argument. To assign a type to this expression, we must first determine the types of both the function and its argument. The rule, often called "application" or "elimination for functions" (\\( \to E \\)), is written as follows:
+一个具有多个前提的常见推理规则是用于函数应用的规则，它确定了函数调用的类型。在 λ 演算中，这只是一个表达式 \\( e_1 \ e_2 \\)，其中 \\( e_1 \\) 是函数，\\( e_2 \\) 是参数。要为这个表达式分配类型，我们必须首先确定函数及其参数的类型。这条规则通常称为“应用”或“函数消去”（\\( \to E \\)），书写如下：
 
 \\[ \frac{\Gamma \vdash e_1 : T_1 \to T_2 \quad \Gamma \vdash e_2 : T_1}{\Gamma \vdash e_1 \ e_2 : T_2} \\]
 
-This rule has two premises above the line. It states that to conclude that the application \\( e_1 \ e_2 \\) has type \\( T_2 \\), we must first prove two things in the same context \\( \Gamma \\). First, we must show that \\( e_1 \\) has a function type, written as \\( T_1 \to T_2 \\), which means it takes an input of type \\( T_1 \\) and produces an output of type \\( T_2 \\). Second, we must show that the argument \\( e_2 \\) has the correct input type \\( T_1 \\). If both of these premises hold, the rule allows us to deduce that the entire expression \\( e_1 \ e_2 \\) results in the function's output type, \\( T_2 \\).
+这条规则在线上方有两个前提。它指出，要得出结论说应用 \\( e_1 \ e_2 \\) 具有类型 \\( T_2 \\)，我们必须首先在同一个上下文 \\( \Gamma \\) 中证明两件事。首先，我们必须表明 \\( e_1 \\) 具有函数类型，写作 \\( T_1 \to T_2 \\)，这意味着它接受一个类型为 \\( T_1 \\) 的输入并产生一个类型为 \\( T_2 \\) 的输出。其次，我们必须表明参数 \\( e_2 \\) 具有正确的输入类型 \\( T_1 \\)。如果这两条前提都成立，该规则就允许我们推导出整个表达式 \\( e_1 \ e_2 \\) 的结果是函数的输出类型 \\( T_2 \\)。
 
-Now, let's look at an example that chains three judgments together to type check the expression \\( f \ x \\). We'll work within a context \\( \Gamma \\) that contains bindings for both \\( f \\) and \\( x \\), specifically \\( \Gamma = f:\text{Int} \to \text{Bool}, x:\text{Int} \\). Our goal is to prove that \\( \Gamma \vdash f \ x : \text{Bool} \\).
+现在，我们来看一个将三个判断串联在一起的例子，用于对表达式 \\( f \ x \\) 进行类型检查。我们将在一个包含 \\( f \\) 和 \\( x \\) 绑定的上下文 \\( \Gamma \\) 中工作，具体而言 \\( \Gamma = f:\text{Int} \to \text{Bool}, x:\text{Int} \\)。我们的目标是证明 \\( \Gamma \vdash f \ x : \text{Bool} \\)。
 
-Our derivation begins with two simple variable lookups, which are our axioms. These will form the premises of our application rule:
+我们的推导从两个简单的变量查找开始，它们构成了我们的公理。这些将成为应用规则的前提：
 
-1.  **First Judgment (Variable Lookup for \\( f \\))**: We use the variable rule to find the type of \\( f \\). Since \\( f:\text{Int} \to \text{Bool} \\) is in our context \\( \Gamma \\), we can conclude:
+1.  **第一组判断（变量查找 \\( f \\)）**：我们使用变量规则来找出 \\( f \\) 的类型。由于 \\( f:\text{Int} \to \text{Bool} \\) 位于上下文 \\( \Gamma \\) 中，我们可以得出：
     \\[ \frac{f:\text{Int} \to \text{Bool} \in \Gamma}{\Gamma \vdash f : \text{Int} \to \text{Bool}} \\]
 
-2.  **Second Judgment (Variable Lookup for \\( x \\))**: Similarly, we look up the type of \\( x \\). The binding \\( x:\text{Int} \\) is in \\( \Gamma \\), so we can conclude:
+2.  **第二组判断（变量查找 \\( x \\)）**：类似地，我们查找 \\( x \\) 的类型。绑定 \\( x:\text{Int} \\) 在 \\( \Gamma \\) 中，因此我们可以得出：
     \\[ \frac{x:\text{Int} \in \Gamma}{\Gamma \vdash x : \text{Int}} \\]
 
-3.  **Third Judgment (Function Application)**: Now we have the necessary premises to use the function application rule. We substitute \\( e_1 \\) with \\( f \\), \\( e_2 \\) with \\( x \\), \\( T_1 \\) with \\( \text{Int} \\), and \\( T_2 \\) with \\( \text{Bool} \\). Since our first two judgments successfully proved the premises, we can now form the final conclusion:
+3.  **第三组判断（函数应用）**：现在我们有了使用函数应用规则所需的前提。我们将 \\( e_1 \\) 替换为 \\( f \\)，将 \\( e_2 \\) 替换为 \\( x \\)，将 \\( T_1 \\) 替换为 \\( \text{Int} \\)，将 \\( T_2 \\) 替换为 \\( \text{Bool} \\)。由于前两组判断成功证明了前提，我们现在可以得出最终结论：
     \\[ \frac{\Gamma \vdash f : \text{Int} \to \text{Bool} \quad \Gamma \vdash x : \text{Int}}{\Gamma \vdash f \ x : \text{Bool}} \\]
 
-Putting all of this together, we can represent the full derivation as a tree of nested inference rules, showing how the final judgment is built from the axioms for variable lookup:
+综合以上所有内容，我们可以将完整的推导表示为一个嵌套推理规则树，展示最终判断是如何从变量查找的公理中构建出来的：
 
 \\[
 \frac{
@@ -73,17 +73,17 @@ Putting all of this together, we can represent the full derivation as a tree of 
 }
 \\]
 
-This nested structure is called a **derivation tree** or **inference tree**. Each node in the tree corresponds to an application of an inference rule, and the leaves are axioms (variable lookups from the context). The tree visually demonstrates how the type checker starts from basic facts (the types of variables in the context) and applies rules step by step to reach a conclusion about the type of a complex expression. In this example, the root of the tree is the judgment \\( \Gamma \vdash f \ x : \text{Bool} \\), and its two children are the judgments for \\( f \\) and \\( x \\), each justified by their respective axioms. This process generalizes to larger programs, where the derivation tree grows to reflect the structure of the program and the logical flow of type information.
+这种嵌套结构称为**推导树**或**推理树**。树中的每个节点对应一次推理规则的应用，而叶子节点是公理（从上下文中查找变量）。该树直观地展示了类型检查器如何从基本事实（上下文中变量的类型）出发，逐步应用规则，最终得出关于复杂表达式类型的结论。在这个例子中，树的根节点是判断 \\( \Gamma \vdash f \ x : \text{Bool} \\)，它的两个子节点分别是关于 \\( f \\) 和 \\( x \\) 的判断，每个判断都由它们各自的公理证明。这一过程可以推广到更大的程序中，推导树会随之增长，以反映程序的结构和类型信息的逻辑流向。
 
-## Terms and Types
+## 项与类型
 
-Historically, many programming languages enforced a strict separation between different layers of abstraction, a concept known as stratification. In this model, you had a "term language" and a "type language" which were syntactically and conceptually distinct. The term language consists of the expressions that actually compute values and run at runtime, like \\( 5 + 2 \\) or \\( \text{if } x \text{ then } y \text{ else } z \\). The type language, on the other hand, consists of expressions that describe the terms, like \\( \text{Int} \\) or \\( \text{Bool} \to \text{Bool} \\). These two worlds were kept separate; a type could not appear where a term was expected, and vice versa.
+历史上，许多编程语言强制严格区分不同抽象层次，这一概念称为分层（stratification）。在这种模型中，存在一个“项语言”和一个“类型语言”，它们在语法和概念上都是截然不同的。项语言由实际计算值并在运行时执行的表达式组成，例如 \\( 5 + 2 \\) 或 \\( \text{if } x \text{ then } y \text{ else } z \\)。而类型语言则由描述这些项的表达式组成，例如 \\( \text{Int} \\) 或 \\( \text{Bool} \to \text{Bool} \\)。这两个世界被严格分开：类型不能出现在期望项的位置，反之亦然。
 
-This stratification could be extended further. To bring order to the type language itself, a third layer called the "kind language" was often introduced. A kind can be thought of as the "type of a type." For example, a concrete type like \\( \text{Int} \\) has the simplest kind, \\( * \\) (often pronounced "type"). But a type constructor like \\( \text{List} \\) isn't a type on its own; it's something that takes a type and produces a new one. \\( \text{List} \\) takes \\( \text{Int} \\) to produce \\( \text{List} \ \text{Int} \\). Therefore, its kind is \\( * \to * \\). This creates a rigid hierarchy: terms are classified by types, and types are classified by kinds. This clear separation makes type checking simpler and more predictable.
+这种分层可以进一步扩展。为了给类型语言本身建立秩序，常常引入第三层，称为“种类语言”。种类可以被看作是“类型的类型”。例如，像 \\( \text{Int} \\) 这样的具体类型具有最简单的种类 \\( * \\)（通常读作“类型”）。但像 \\( \text{List} \\) 这样的类型构造器本身并不是一个类型；它是一个接受类型并产生新类型的东西。\\( \text{List} \\) 接受 \\( \text{Int} \\) 生成 \\( \text{List} \ \text{Int} \\)。因此，它的种类是 \\( * \to * \\)。这样就形成了一个严格的层次结构：项由类型分类，类型由种类分类。这种清晰的分离使得类型检查更简单、更可预测。
 
-However, a major trend in the design of modern, powerful type systems has been to move away from this strict stratification and instead unify the term and type languages into a single, consistent syntactic framework. In these unified systems, the line between what is a "value" (a term) and what is a "description" (a type) begins to blur. The language's grammar allows expressions that can be interpreted at different "levels" or "universes." For instance, you might have a universe \\( \text{Type}_0 \\) which contains simple types like \\( \text{Bool} \\). Then you would have a higher universe, \\( \text{Type}_1 \\), whose only member is \\( \text{Type}_0 \\). This allows you to write functions that operate on types themselves, a key feature of dependently typed languages. More on this later.
+然而，现代强大类型系统设计中的一个主要趋势是摆脱这种严格的分层，转而将项语言和类型语言统一成一个一致、统一的语法框架。在这些统一的系统中，“值”和“描述”之间的界限开始模糊。语言的语法允许表达式在不同“层次”或“宇宙”中进行解释。例如，你可以有一个宇宙 \\( \text{Type}_0 \\)，它包含像 \\( \text{Bool} \\) 这样的简单类型。然后你会有一个更高的宇宙 \\( \text{Type}_1 \\)，其唯一成员是 \\( \text{Type}_0 \\)。这允许你编写操作类型本身的函数，这是依赖类型语言的一个关键特性。关于这一点稍后会详细讨论。
 
-To make this concrete, let's consider a simple, stratified language for arithmetic. We can define its term language (\\( e \\)) and its corresponding type language (\\( \tau \\)) separately. The terms are the expressions we can compute, and the types are the static labels we can assign to them. Their definitions might look like this:
+为了具体说明，我们考虑一个简单的分层算术语言。我们可以分别定义它的项语言（\\( e \\)）和对应的类型语言（\\( \tau \\)）。项是我们能计算的表达式，而类型是我们可以分配给它们的静态标签。它们的定义可能如下所示：
 
 \\[
 \begin{align*}
@@ -92,45 +92,45 @@ To make this concrete, let's consider a simple, stratified language for arithmet
 \end{align*}
 \\]
 
-Here, the term language \\( e \\) defines natural numbers (\\( n \\)), addition, a function to check for zero, boolean constants, and a conditional. The type language \\( \tau \\) is much simpler; it only contains the types \\( \text{Nat} \\) and \\( \text{Bool} \\). In this stratified system, an expression like \\( \text{Nat} + 5 \\) would be a syntax error because \\( \text{Nat} \\) belongs to the type language and cannot be used in a term-level operation like addition. In a more modern, unified system, this rigid distinction would be relaxed.
+在这里，项语言 \\( e \\) 定义了自然数（\\( n \\)）、加法、检查是否为零的函数、布尔常量以及条件表达式。类型语言 \\( \tau \\) 则简单得多；它只包含类型 \\( \text{Nat} \\) 和 \\( \text{Bool} \\)。在这个分层系统中，像 \\( \text{Nat} + 5 \\) 这样的表达式将是语法错误，因为 \\( \text{Nat} \\) 属于类型语言，不能用于项级别的加法操作。而在更现代、统一的系统中，这种严格的区分将被放宽。
 
-## Type Checking and Type Reconstruction
+## 类型检查与类型重构
 
-While the process of verifying that a program adheres to its type rules is called type checking, a related and historically significant challenge is **type reconstruction**, more commonly known as **type inference**. The goal of type inference is to have the compiler automatically deduce the types of expressions without the programmer needing to write explicit type annotations. For many years, developing algorithms that could perform full type inference for increasingly expressive languages was an active and vital area of research. The promise was seductive: achieve all the safety guarantees of a static type system without the verbose, manual effort of annotating every variable and function.
+虽然验证程序是否符合其类型规则的过程称为类型检查，但一个相关且历史上具有重要意义的过程是**类型重构**，通常称为**类型推断**。类型推断的目标是让编译器自动推导出表达式的类型，而无需程序员编写显式的类型注解。多年来，开发能够对表达性越来越强的语言执行完整类型推断的算法一直是一个活跃且重要的研究领域。其前景非常诱人：在无需为每个变量和函数手动编写冗长注解的情况下，获得静态类型系统的所有安全性保证。
 
-In more recent decades, the focus on achieving complete type inference has diminished. The primary reason is that as type systems have grown more powerful and complex, full inference has become computationally intractable or, in many cases, fundamentally undecidable. Modern languages often include features like higher-rank polymorphism (passing polymorphic functions as arguments), GADTs, and various forms of type-level programming where types themselves can involve computation. For these systems, a general algorithm that can always infer the single "best" type for any given expression simply does not exist. Attempting to do so would lead to impossibly complex algorithms and can result in inferred types that are enormous and incomprehensible to the programmer.
+近几十年来，对实现完全类型推断的关注有所减弱。主要原因在于，随着类型系统变得日益强大和复杂，完全推断在计算上变得难以处理，或者在许多情况下本质上不可判定。现代语言通常包含诸如高阶多态（将多态函数作为参数传递）、GADT 以及各种类型级编程（其中类型本身可以涉及计算）等特性。对于这些系统，一个能够始终为任何给定表达式推断出“最佳”单一类型的通用算法根本不存在。试图这样做会导致极其复杂的算法，并可能产生巨大且令程序员难以理解的推断类型。
 
-As a result, many modern statically-typed languages have converged on a practical and elegant middle ground: **bidirectional type checking**. Instead of having a single mode that always tries to infer types, a bidirectional checker operates in two distinct modes: a "checking" mode and a "synthesis" mode.
+因此，许多现代静态类型语言都达成了一种实用且优雅的折中方案：**双向类型检查**。双向检查器不是采用单一模式始终尝试推断类型，而是以两种不同的模式运行：一种是“检查”模式，另一种是“综合”模式。
 
-1.  **Checking Mode**: In this mode, the algorithm verifies that an expression \\( e \\) conforms to a known, expected type \\( \tau \\). Information flows "down" from the context into the expression. We ask the question: "Can we prove that \\( e \\) has type \\( \tau \\)?"
-2.  **Synthesis Mode**: In this mode, the algorithm computes, or "synthesizes," a type for an expression \\( e \\) without any prior expectation. Information flows "up" from the expression's components. Here, we ask: "What is the type of \\( e \\)?"
+1.  **检查模式**：在此模式下，算法验证表达式 \\( e \\) 是否符合已知的预期类型 \\( \tau \\)。信息从上下文“向下”流入表达式。我们提出的问题是：“我们能证明 \\( e \\) 具有类型 \\( \tau \\) 吗？”
+2.  **综合模式**：在此模式下，算法在没有预期的情况下计算或“综合”出表达式 \\( e \\) 的类型。信息从表达式组件“向上”流动。我们提出的问题是：“\\( e \\) 的类型是什么？”
 
-This duality provides a powerful framework. The language designer can specify which syntactic constructs require annotations and which do not. For example, the arguments of a top-level function might require explicit annotations (putting the checker in checking mode for the function body), but the types of local variables within that body can be inferred (synthesized). This approach neatly sidesteps the difficulties of full inference by requiring the programmer to provide annotations only at key boundaries where ambiguity would otherwise arise. It offers a "best of both worlds" scenario: the convenience of local inference with the clarity and power of explicit annotations for complex, polymorphic, or ambiguous parts of the code, representing a theoretical sweet spot that balances expressiveness, usability, and implementability. More on this later.
+这种双重性提供了一个强大的框架。语言设计者可以指定哪些语法结构需要注解，哪些不需要。例如，顶层函数的参数可能需要显式注解（使检查器对函数体进入检查模式），但函数体内局部变量的类型可以被推断（综合）。这种方法通过要求程序员仅在可能产生歧义的关键边界处提供注解，巧妙规避了完全推断的困难。它提供了一种“两全其美”的场景：局部推断的便利性，加上对复杂、多态或模糊代码部分的显式注解带来的清晰性和强大功能，代表了一种理论上的最佳平衡点，在表达性、可用性和可实现性之间取得了平衡。稍后会有更多讨论。
 
-## The Frontiers
+## 前沿领域
 
-Since the late 1970s, researchers have noticed striking structural parallels between computation, formal logic, and category theory. This observation, sometimes called ["computational trinitarianism"](https://ncatlab.org/nlab/show/computational+trilogy), suggests that these three disciplines are studying the same underlying mathematical structures from different angles. The connections are genuine and mathematically rigorous, though their practical implications for everyday programming remain a matter of ongoing work rather than settled fact.
+自 20 世纪 70 年代末以来，研究人员注意到计算、形式逻辑和范畴论之间存在惊人的结构相似性。这种观察有时被称为[“计算三元论”](https://ncatlab.org/nlab/show/computational+trilogy)，表明这三个学科从不同角度研究着相同的底层数学结构。这些联系是真实且数学上严格的，尽管它们对日常编程的实际意义仍然是正在进行的工作，而非既定事实。
 
-The central insight here is the **Curry-Howard correspondence**, which establishes a formal duality between type systems and logical proof systems. Under this correspondence, a type can be read as a logical proposition, and a well-typed program constitutes a constructive proof of that proposition. This is not mere analogy: the same formal structures appear in both domains, and results proven in one setting transfer directly to the other.
+这里的核心洞见是 **Curry-Howard 对应**，它建立了类型系统与逻辑证明系统之间的形式对偶性。在这种对应下，类型可以被解读为一个逻辑命题，而一个良类型的程序就构成了该命题的一个构造性证明。这不仅仅是类比：相同的形式结构出现在两个领域中，并且在一个环境中证明的结果可以直接转移到另一个环境。
 
-The correspondence extends naturally in several directions:
+这种对应关系自然地向几个方向延伸：
 
-*   A **Proposition** in logic corresponds to a **Type** in programming, which corresponds to an **Object** in category theory.
-*   A **Proof** corresponds to a **Program** (or term) of that type, which corresponds to a **Morphism** between objects.
-*   **Proof simplification** corresponds to **Program evaluation**, which corresponds to composition of morphisms.
+*   逻辑中的**命题**对应于编程中的**类型**，对应于范畴论中的**对象**。
+*   **证明**对应于该类型的**程序**（或项），对应于对象之间的**态射**。
+*   **证明简化**对应于**程序求值**，对应于态射的组合。
 
-What does this buy us in practice? Consider a function to retrieve the first element of a list. A naive signature like `head(List<T>) -> T` makes a promise the implementation cannot keep: it claims to produce a value of type `T` for any list, but an empty list has no first element. The type is a false proposition.
+这在实践中能为我们带来什么？考虑一个用于获取列表第一个元素的函数。像 `head(List<T>) -> T` 这样的朴素签名做出了实现无法兑现的承诺：它声称对于任何列表都能产生一个 `T` 类型的值，但空列表没有第一个元素。该类型是一个虚假的命题。
 
-A more honest signature is `safeHead(List<T>) -> Maybe<T>`. The `Maybe` type forces the caller to handle the possibility of absence. This is a modest example, but it illustrates the key point: the type system enforces a contract, and the compiler checks that contract statically. The proposition expressed by the type is actually true of any program that typechecks.
+一个更诚实的签名是 `safeHead(List<T>) -> Maybe<T>`。`Maybe` 类型强制调用者处理不存在的可能性。这是一个简单的例子，但它说明了关键点：类型系统强制实施契约，并且编译器在静态时检查该契约。由类型表达的命题对于任何通过类型检查的程序来说实际上是真命题。
 
-Dependent type systems push this further. In a language like Agda, Coq, or Lean, you can define a type `SortedList<T>` whose values are lists together with proofs that they are sorted. A merge function with signature `merge(SortedList<T>, SortedList<T>) -> SortedList<T>` must construct not just the merged list but also a proof that the result is sorted. The compiler will reject any implementation that fails to provide this proof.
+依赖类型系统进一步推进了这一点。在像 Agda、Coq 或 Lean 这样的语言中，你可以定义一个类型 `SortedList<T>`，其值是列表以及它们已排序的证明。一个签名如 `merge(SortedList<T>, SortedList<T>) -> SortedList<T>` 的归并函数不仅必须构造出归并后的列表，还必须构造出一个结果是已排序的证明。编译器将拒绝任何未能提供此证明的实现。
 
-This is genuinely powerful, but it comes with costs that are easy to understate. Writing proofs requires expertise that most programmers do not have. The proof burden can exceed the implementation effort by an order of magnitude. Proof assistants have made significant progress on automation, but we are far from a world where deep correctness properties fall out automatically. The languages that support these features remain niche, used primarily in formal verification of critical systems and in mathematical research.
+这确实很强大，但它的代价很容易被低估。编写证明需要大多数程序员不具备的专业知识。证明负担可能超过实现工作量一个数量级。证明助手在自动化方面取得了显著进展，但我们远未达到深度正确性属性会自动得出的世界。支持这些特性的语言仍然是小众的，主要用于关键系统的形式化验证和数学研究。
 
-There is a tempting vision here: if types are propositions and programs are proofs, perhaps we could specify what we want as a type and have the computer synthesize the program automatically. This is the dream of program synthesis from specifications. The reality is more modest. Current synthesis tools work well for small, highly constrained problems. Generating correct implementations from rich specifications remains an open research problem, with practical tools handling only limited domains.
+这里有一个诱人的愿景：如果类型是命题，程序是证明，那么也许我们可以将我们的需求指定为类型，然后让计算机自动综合出程序。这就是从规范进行程序综合的梦想。现实则更为有限。当前的综合工具适用于小而高度受限的问题。从丰富的规范生成正确的实现仍然是一个开放的研究问题，实际工具仅处理有限的领域。
 
-As machine learning systems increasingly generate code, type systems offer one path toward trust. A type checker is a verifier: it accepts only programs that satisfy its rules, regardless of whether a human or a model wrote the code. Richer type systems raise the bar on what counts as acceptable, catching more errors before deployment. This is a reasonable engineering argument for investing in expressive types, though it is worth noting that most properties we care about in real systems, things like performance, security against side channels, or correct handling of distributed state, remain outside what current type systems can express.
+随着机器学习系统越来越多地生成代码，类型系统提供了一条通往信任的路径。类型检查器是一个验证器：它只接受满足其规则的程序，无论代码是由人还是模型编写的。更丰富的类型系统提高了可接受的标准，在部署前捕获更多错误。这是一个合理的工程论点，支持投资于富有表现力的类型系统，不过值得注意的是，我们关心的实际系统中的大多数属性——例如性能、侧信道安全性或分布式状态的正确处理——仍然超出当前类型系统所能表达的范围。
 
-The theoretical connections between logic, computation, and category theory are beautiful and have guided the design of programming languages for decades. They suggest that there is something deep and unified in these structures. But translating this theory into practical tools that working programmers can use remains ongoing work. The gap between what is possible in principle and what is practical in the field is real, and closing it will require continued research into proof automation, language design, and tooling.
+逻辑、计算与范畴论之间的理论联系既优美又深刻，数十年来一直指导着编程语言的设计。这些联系暗示着这些结构背后存在着某种深层次的统一性。然而，将这些理论转化为实际程序员可用的实用工具，仍是一项进行中的工作。理论上可行与实践中可用之间的鸿沟真实存在，而弥合这一鸿沟需要持续在证明自动化、语言设计和工具开发等领域展开研究。
 
-These ideas are worth studying not because they will immediately transform how you write software, but because they reveal the mathematical bones beneath the code. Understanding why types work the way they do, and what they are capable of expressing, makes you a better designer of programs and languages alike. That understanding is its own reward.
+这些思想值得学习，并非因为它们能立刻改变你编写软件的方式，而是因为它们揭示了代码背后的数学骨架。理解类型为何以特定方式运作、它们能表达何种内容，将使你成为更优秀的程序与语言设计者。这种理解本身就是一种回报。

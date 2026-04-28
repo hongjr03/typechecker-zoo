@@ -1,10 +1,10 @@
-# Inductive Types
+# 归纳类型
 
-Inductive types form the foundation of data structures in the Calculus of Constructions, providing a systematic way to define recursive types with constructors and elimination principles. Our implementation supports universe-polymorphic inductive types with dependent pattern matching, enabling  data type abstractions while maintaining logical consistency through the universe hierarchy.
+归纳类型构成了构造演算中数据结构的基础，提供了一种系统的方式，通过构造子和消解原则来定义递归类型。我们的实现支持宇宙多态归纳类型以及依赖模式匹配，能在维持宇宙层次逻辑一致性的同时实现数据类型抽象。
 
-Inductive types represent a crucial extension to the pure lambda calculus, allowing the definition of concrete data structures like natural numbers, lists, and trees through constructor-based specifications. The implementation provides both syntactic support for inductive declarations and semantic handling through specialized type checking algorithms that ensure constructor consistency and exhaustive pattern coverage.
+归纳类型是对纯 lambda 演算的关键扩展，允许通过基于构造子的规范来定义具体的数据结构，如自然数、列表和树。该实现为归纳声明提供语法支持，并通过专门化的类型检查算法进行语义处理，确保构造子的一致性和模式覆盖的完整性。
 
-Consider these intuitive examples that demonstrate the fundamental concept of inductive types. A simple enumeration like the days of the week can be expressed as an inductive type with seven constructors:
+以下直观的例子展示了归纳类型的基本概念。一个简单的枚举，例如一周中的天数，可以表示为带有七个构造子的归纳类型：
 
 ```
 inductive DayOfWeek : Type with
@@ -17,7 +17,7 @@ inductive DayOfWeek : Type with
   | Sunday    : DayOfWeek
 ```
 
-Similarly, primary colors form another natural inductive type with three distinct constructors:
+类似地，三原色形成了另一个带有三个不同构造子的自然归纳类型：
 
 ```
 inductive Color : Type with
@@ -26,9 +26,9 @@ inductive Color : Type with
   | Blue  : Color
 ```
 
-These examples illustrate how inductive types provide a systematic way to define finite sets of distinct values through constructor declarations, with each constructor serving as both a data constructor and a proof that the constructed value belongs to the inductive type.
+这些例子说明了归纳类型如何通过构造子声明提供一种系统的方法来定义有限的不同值集合，每个构造子既充当数据构造子，又充当一个证明，即构造的值属于该归纳类型。
 
-More complex inductive types can include recursive constructors that reference the type being defined, enabling data structures like binary trees:
+更复杂的归纳类型可以包含引用被定义类型本身的递归构造子，从而支持像二叉树这样的数据结构：
 
 ```
 inductive BinaryTree (A : Type) : Type with
@@ -36,148 +36,148 @@ inductive BinaryTree (A : Type) : Type with
   | Node : A -> BinaryTree A -> BinaryTree A -> BinaryTree A
 ```
 
-This binary tree definition demonstrates several important concepts: the type is parameterized by an element type `A`, the `Leaf` constructor creates empty trees, and the `Node` constructor takes a value of type `A` along with two subtrees to create larger trees. The recursive nature of the `Node` constructor enables the construction of arbitrarily deep tree structures while maintaining type safety through the inductive type system.
+这个二叉树定义展示了几个重要概念：类型由元素类型 `A` 参数化，`Leaf` 构造子创建空树，`Node` 构造子接受一个类型为 `A` 的值以及两个子树来创建更大的树。`Node` 构造子的递归性质使得能够构建任意深度的树结构，同时通过归纳类型系统维持类型安全性。
 
-## Inductive Type Declarations
+## 归纳类型声明
 
-The core data structure for inductive type declarations captures all the essential components needed for constructor-based type definitions:
+归纳类型声明的核心数据结构捕获了基于构造子的类型定义所需的所有基本组成部分：
 
 ```rust
 #![enum!("coc/src/ast.rs", Declaration)]
 ```
 
-Inductive declarations specify a type name, optional universe parameters for universe polymorphism, type parameters for generic types, a result type specification, and a collection of constructor definitions. This structure enables complex inductive types ranging from simple enumerations to universe-polymorphic families of types.
+归纳声明指定了类型名称、用于宇宙多态的可选宇宙参数、泛型类型的类型参数、结果类型规范以及一组构造子定义。这种结构支持从简单枚举到宇宙多态类型族等各种复杂的归纳类型。
 
 ```rust
 #![struct!("coc/src/ast.rs", Constructor)]
 ```
 
-Constructor definitions associate names with their type signatures, enabling the type checker to verify that constructor applications respect the declared interfaces. Each constructor must produce a value of the inductive type it belongs to, maintaining the logical coherence of the type system.
+构造子定义将名称与其类型签名关联起来，使类型检查器能够验证构造子的应用是否遵循声明接口。每个构造子必须产生它所归属的归纳类型的值，从而维持类型系统的逻辑一致性。
 
-## Constructor Type Specialization
+## 构造子类型特化
 
-When inductive types include parameters, constructor types must be specialized appropriately for each use context:
+当归纳类型包含参数时，构造子类型必须根据每个使用上下文进行适当特化：
 
 ```rust
 #![function!("coc/src/typecheck.rs", TypeChecker::specialize_constructor_type)]
 ```
 
-Constructor specialization handles the complex process of instantiating generic constructor types with specific type arguments. The algorithm traverses constructor type signatures and replaces type parameters with concrete arguments while preserving the constructor's structural properties. This process enables generic inductive types like `List A` to work correctly when instantiated with specific element types.
+构造子特化处理了用具体类型参数实例化泛型构造子类型的复杂过程。该算法遍历构造子类型签名，并在保持构造子结构属性的同时，将类型参数替换为具体参数。这一过程使得像 `List A` 这样的泛型归纳类型在通过具体元素类型实例化时能够正确工作。
 
-The specialization process maintains universe polymorphism by properly handling universe parameters in constructor types. When a constructor belongs to a universe-polymorphic inductive type, the specialization algorithm ensures that universe constraints are preserved throughout the instantiation process.
+特化过程通过正确处理构造子类型中的宇宙参数来维持宇宙多态。当构造子属于宇宙多态归纳类型时，特化算法确保宇宙约束在整个实例化过程中得以保持。
 
-## Pattern Matching Implementation
+## 模式匹配实现
 
-Pattern matching provides the elimination principle for inductive types, allowing programs to analyze inductive values by case analysis:
+模式匹配为归纳类型提供了消解原理，使得程序能够通过情况分析来剖析归纳值：
 
 ```rust
 #![enum!("coc/src/ast.rs", Pattern)]
 ```
 
-The pattern system supports constructor patterns that destructure inductive values, variable patterns that bind matched components to names, and wildcard patterns that match any value without binding. This comprehensive pattern language enables complete analysis of inductive data structures.
+模式系统支持解构归纳值的构造子模式、将匹配分量绑定到名称的变量模式，以及匹配任意值而不进行绑定的通配符模式。这种全面的模式语言使得能够对归纳数据结构进行完整的分析。
 
 ```rust
 #![struct!("coc/src/ast.rs", MatchArm)]
 ```
 
-Match arms associate patterns with result expressions, creating the case analysis structure that defines how pattern matching behaves. Each arm must produce a result of the same type, ensuring that pattern matching expressions have well-defined types regardless of which case is selected at runtime.
+匹配分支将模式与结果表达式关联起来，创建了定义模式匹配行为的情况分析结构。每个分支必须产生相同类型的结果，确保无论运行时选择哪个分支，模式匹配表达式都具有良好定义的类型。
 
-## Pattern Type Checking
+## 模式类型检查
 
-The type checking algorithm for pattern matching ensures that patterns are consistent with the types being matched and that all cases produce compatible result types:
+用于模式匹配的类型检查算法确保模式与被匹配的类型一致，并且所有情况都产生兼容的结果类型：
 
 ```rust
 #![function!("coc/src/typecheck.rs", TypeChecker::check_pattern)]
 ```
 
-Pattern type checking validates that constructor patterns match the structure of their corresponding constructors, that variable patterns receive appropriate types from the matched context, and that wildcard patterns are used correctly. The algorithm maintains a typing context that tracks the types of pattern variables for use in result expressions.
+模式类型检查验证构造子模式是否与相应构造子的结构匹配，变量模式是否从匹配上下文中获得适当的类型，以及通配符模式是否正确使用。该算法维护一个类型上下文，用于跟踪模式变量的类型，以便在结果表达式中使用。
 
-The pattern checker handles universe polymorphism by ensuring that constructor patterns properly instantiate universe-polymorphic constructors. When a pattern matches against a constructor from a universe-polymorphic inductive type, the checker verifies that universe constraints are satisfied throughout the pattern matching process.
+模式检查器通过确保构造子模式正确实例化宇宙多态构造子来处理宇宙多态。当模式与来自宇宙多态归纳类型的构造子匹配时，检查器验证宇宙约束在整个模式匹配过程中是否得到满足。
 
-## Constructor Type Inference
+## 构造子类型推断
 
-Constructor applications in terms require specialized type inference to handle the interaction between constructor types and their arguments:
+项中的构造子应用需要专门化的类型推断来处理构造子类型与其参数之间的交互：
 
 ```rust
 #![function!("coc/src/typecheck.rs", TypeChecker::infer)]
 ```
 
-Constructor type inference looks up constructor types from the context, specializes them with appropriate type arguments, and validates that the constructor is applied to arguments of the correct types. The algorithm handles both simple constructors and constructors that belong to universe-polymorphic inductive types.
+构造子类型推断从上下文中查找构造子类型，用适当的类型参数对其进行特化，并验证构造子是否应用于正确类型的参数。该算法处理简单的构造子以及属于宇宙多态归纳类型的构造子。
 
-## Pattern Matching Utilities
+## 模式匹配工具
 
-Several utility functions support the pattern matching implementation by providing operations on patterns and constructor types:
+一些工具函数通过对模式和构造子类型进行操作来支持模式匹配实现：
 
 ```rust
 #![function!("coc/src/term_utils.rs", pattern_binds_var)]
 ```
 
-This utility determines whether a pattern introduces a binding for a specific variable, enabling the type checker to track variable scopes correctly across pattern matching expressions.
+此工具判断一个模式是否为特定变量引入绑定，使得类型检查器能够在模式匹配表达式中正确追踪变量作用域。
 
 ```rust
 #![function!("coc/src/term_utils.rs", extract_constructor_return_type)]
 ```
 
-Constructor return type extraction analyzes constructor type signatures to determine the result type produced by constructor applications. This operation is essential for validating that constructor uses are type-correct.
+构造器返回类型提取分析构造器的类型签名，以确定由构造器应用产生的结果类型。这一操作对于验证构造器使用是否类型正确至关重要。
 
 ```rust
 #![function!("coc/src/term_utils.rs", extract_constructor_arg_types)]
 ```
 
-Argument type extraction decomposes constructor type signatures to identify the types expected for constructor arguments. This information guides type checking of constructor applications and pattern matching expressions.
+参数类型提取分解构造器的类型签名，以识别构造器参数所期望的类型。该信息指导构造器应用和模式匹配表达式的类型检查。
 
-## Context Integration
+## 上下文集成
 
-Constructor information is maintained in the typing context to support constructor lookups during type checking:
+构造器信息保存在类型上下文中，以支持在类型检查期间进行构造器查找：
 
 ```rust
 #![function!("coc/src/context.rs", Context::add_constructor)]
 ```
 
-Adding constructors to the context makes them available for type checking and pattern matching operations. The context maintains the mapping from constructor names to their type signatures, enabling efficient lookup during type inference.
+将构造器添加到上下文中，使其可用于类型检查和模式匹配操作。上下文维护从构造器名称到其类型签名的映射，使得在类型推断过程中能够高效查找。
 
 ```rust
 #![function!("coc/src/context.rs", Context::lookup_constructor)]
 ```
 
-Constructor lookup retrieves type information for constructor names encountered in terms or patterns. This operation is fundamental to constructor type checking and pattern matching validation.
+构造器查找检索在项或模式中遇到的构造器名称的类型信息。该操作是构造器类型检查和模式匹配验证的基础。
 
-## Universe Polymorphic Inductive Types
+## 宇宙多态归纳类型
 
-The implementation supports universe polymorphic inductive types that can exist at different universe levels:
+本实现支持存在于不同宇宙级别的宇宙多态归纳类型：
 
 ```rust
 #![source_file!("coc/examples/universe_polymorphism_test.coc")]
 ```
 
-Universe polymorphic inductive types demonstrate the full power of the Calculus of Constructions' universe system. These types can be instantiated at different universe levels while maintaining their structural properties, enabling generic programming patterns that work across the entire universe hierarchy.
+宇宙多态归纳类型展示了构造演算宇宙系统的全部能力。这些类型可以在不同宇宙级别上实例化，同时保持其结构特性，从而支持在整个宇宙层级上工作的泛型编程模式。
 
-## Basic Inductive Type Examples
+## 基本归纳类型示例
 
-Simple inductive types like natural numbers and booleans provide concrete examples of the inductive type system in action:
+像自然数和布尔值这样的简单归纳类型，提供了归纳类型系统实际应用的具体示例：
 
 ```rust
 #![source_file!("coc/examples/pattern_matching_test.coc")]
 ```
 
-These examples demonstrate basic inductive type declarations with simple constructors and straightforward pattern matching. The `Bool` type shows enumeration-style inductive types, while `Nat` demonstrates recursive inductive types with constructor parameters.
+这些示例展示了带有简单构造器和直观模式匹配的基本归纳类型声明。`Bool` 类型展示了枚举风格的归纳类型，而 `Nat` 则演示了带有构造器参数的递归归纳类型。
 
-## Advanced Pattern Matching
+## 高级模式匹配
 
-More  pattern matching examples illustrate the expressive power of dependent pattern matching:
+更多高级模式匹配示例展示了依赖模式匹配的表现力：
 
 ```rust
 #![source_file!("coc/examples/pattern_matching_advanced.coc")]
 ```
 
-Advanced pattern matching shows how constructors with parameters can be destructured through pattern matching, with pattern variables receiving appropriate types derived from the constructor signatures. The `predecessor` function demonstrates recursive constructor patterns, while the `not_bool` function shows simple enumeration pattern matching.
+高级模式匹配说明了如何通过模式匹配解构带参数的构造器，模式变量会获得从构造器签名推导出的适当类型。`predecessor` 函数演示了递归构造器模式，而 `not_bool` 函数则展示了简单的枚举模式匹配。
 
-## Dependent Inductive Types
+## 依赖归纳类型
 
-The implementation supports dependent inductive types where constructor types can depend on term arguments, enabling  data structures:
+本实现支持归纳类型，其中构造器的类型可以依赖项参数，从而支持依赖数据结构：
 
 ```rust
 #![source_file!("coc/examples/dependent_vec.coc")]
 ```
 
-Dependent inductive types represent the full power of inductive types in dependent type theory. These types enable length-indexed vectors, well-typed abstract syntax trees, and other data structures where types carry computational information about their contents.
+依赖归纳类型代表了依赖类型理论中归纳类型的全部能力。这些类型使得长度索引向量、良类型抽象语法树以及其他数据类型成为可能，其中类型携带关于其内容的计算信息。
