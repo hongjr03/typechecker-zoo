@@ -2,7 +2,7 @@
 
 A cute collection of type checker implementations demonstrating modern type checking algorithms from the last fifty years of programming language design.
 
-[![CI](https://github.com/sdiehl/typechecker-zoo/actions/workflows/ci.yml/badge.svg)](https://github.com/sdiehl/typechecker-zoo/actions/workflows/ci.yml)
+[![CI](https://github.com/hongjr03/typechecker-zoo/actions/workflows/ci.yml/badge.svg)](https://github.com/hongjr03/typechecker-zoo/actions/workflows/ci.yml)
 
 <div align="center">
 
@@ -67,7 +67,7 @@ If you want to contribute, please fork the repository and submit a pull request.
 
 ```shell
 # Clone the repository
-git clone https://github.com/sdiehl/typechecker-zoo.git
+git clone https://github.com/hongjr03/typechecker-zoo.git
 cd typechecker-zoo/docs
 
 # Install mdBook and the include preprocessor

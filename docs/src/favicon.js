@@ -3,8 +3,8 @@
     // Get the current page URL and title
     var url = window.location.href;
     var title = document.title;
-    var description = "Typechecker Zoo - A collection of type checkers for educational purposes";
-    var imageUrl = window.location.origin + "/lean.png";
+    var description = "类型检查器动物园 - 用于学习类型检查器实现的教程";
+    var imageUrl = new URL("lean.png", document.baseURI).href;
     
     // Create meta tags for social sharing
     var metaTags = [

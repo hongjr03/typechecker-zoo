@@ -12,8 +12,8 @@
 
 完整源代码以 MIT 许可证在 Github 上提供：
 
-* [**Github 源代码**](https://github.com/sdiehl/typechecker-zoo)
-* [构建说明](https://github.com/sdiehl/typechecker-zoo/blob/main/README.md)
+* [**Github 源代码**](https://github.com/hongjr03/typechecker-zoo)
+* [构建说明](https://github.com/hongjr03/typechecker-zoo/blob/main/README.md)
 
 ***
 
@@ -65,4 +65,4 @@ Robin Milner 的经典 Hindley-Milner 类型推断算法，来自《编程中的
 实现了 Vladimir Voevodsky 在《宇宙多态类型系统》中概述的双向依赖类型检查器。
 </div>
 
-这是一个 MIT 许可的项目，只是我业余时间的爱好。如果你在散文或代码中发现错别字，欢迎在 [Github 上发起拉取请求](https://github.com/sdiehl/typechecker-zoo)，我将不胜感激！
+这是一个 MIT 许可的项目，只是我业余时间的爱好。如果你在散文或代码中发现错别字，欢迎在 [Github 上发起拉取请求](https://github.com/hongjr03/typechecker-zoo)，我将不胜感激！
