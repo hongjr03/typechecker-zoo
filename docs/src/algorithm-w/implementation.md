@@ -328,9 +328,8 @@ Parsed expression: let const = λx.λy.x in const 42 true
 
 Type inference successful!
 Final type: Int
-```
 
-推理追踪：
+Inference trace:
 T-Let: {} ⊢ let const = λx.λy.x in const 42 true ⇒ => Int
   T-Abs: {} ⊢ λx.λy.x ⇒ => t0 → t1 → t0
     T-Abs: {x: t0} ⊢ λy.x ⇒ => t1 → t0
